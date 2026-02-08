@@ -140,6 +140,25 @@
       return INVESTOR_IMAGES[name] || INVESTOR_IMAGES[name.replace("Dr. ", "")] || null;
     };
 
+    // Helper to find Investor Reps for a given meeting (joining data sources)
+    const getInvestorRepsForMeeting = (meeting) => {
+      const assignment = INVESTOR_ASSIGNMENTS.find(a =>
+        (a.fund === meeting.investor) &&
+        (a.timeSlot === meeting.timeSlot) &&
+        (meeting.founder.includes(a.founderCompany) || a.founderCompany.includes(meeting.founder))
+      );
+      return assignment ? assignment.reps : [];
+    };
+
+    const getMatchInvestorImage = (meeting) => {
+      const reps = getInvestorRepsForMeeting(meeting);
+      for (const rep of reps) {
+        const img = getInvestorImage(rep);
+        if (img) return img;
+      }
+      return null;
+    };
+
     const MEETINGS_DATA = [
       { id: 1, runner: "Sumangal", timeSlot: "2:30 PM – 3:00 PM", founder: "IDfy", investor: "Evolvence Equity Partners", room: "FF-Introspect", rep: "Anoushka", status: "pending", isPriority: false },
       { id: 2, runner: "Sumangal", timeSlot: "2:30 PM – 3:00 PM", founder: "TestMu (formerly Lambdatest)", investor: "IFC", room: "GF-Navigate", rep: "Shalabh Tandon", status: "pending", isPriority: false },
@@ -616,8 +635,8 @@
             <div style={{ padding: "10px 14px", background: "rgba(255,255,255,0.03)", borderRadius: 12, border: "1px solid rgba(255,255,255,0.06)" }}>
               <p style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 2 }}>Investor (LP)</p>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                {getInvestorImage(repName) && (
-                  <img src={getInvestorImage(repName)} className="investor-avatar-card" alt={repName} />
+                {getMatchInvestorImage(meeting) && (
+                  <img src={getMatchInvestorImage(meeting)} className="investor-avatar-card" alt="Investor" />
                 )}
                 <p style={{ fontSize: 15, color: "rgba(255,255,255,0.85)", fontWeight: 600 }}>{meeting.investor}</p>
               </div>
@@ -1128,7 +1147,7 @@
                           {repName && <p style={{ fontSize: 12, color: "rgba(255,255,255,0.45)" }}>Rep: {repName}</p>}
                           <p style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", marginTop: 4, display: "flex", alignItems: "center", gap: 6 }}>
                             Meeting with
-                            {getInvestorImage(repName) && <img src={getInvestorImage(repName)} style={{ width: 16, height: 16, borderRadius: "50%", objectFit: "cover" }} alt="" />}
+                            {getMatchInvestorImage(m) && <img src={getMatchInvestorImage(m)} style={{ width: 16, height: 16, borderRadius: "50%", objectFit: "cover" }} alt="" />}
                             <span style={{ color: "rgba(255,255,255,0.7)", fontWeight: 600 }}>{highlightMatch(m.investor, query)}</span>
                           </p>
                           <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 4, color: isLive ? "#2ecc70" : "rgba(255,255,255,0.35)" }}>
