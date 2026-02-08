@@ -1,0 +1,1478 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#050505">
+  <title>BluSwan 2026 — Mission Control</title>
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦢</text></svg>">
+  <style>
+    html,
+    body,
+    #root {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      width: 100%;
+      background: #050505;
+      overflow: hidden;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="root"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js" crossorigin></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"
+    crossorigin></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js" crossorigin></script>
+
+  <script type="text/babel" data-type="module">
+    const { useState, useEffect, useCallback, createContext, useContext, useMemo, useRef } = React;
+
+    // ═══════════════════════════════════════════════════════════════════════════════
+    // DATA SOURCE: Parsed from "Copy_of_LPAGM_BluSwan_2026.xlsx"
+    // Sheets used: "Founder View" (meetings + rooms), "Investor Preferences" (priority),
+    //              "Work" (staff roles + room info)
+    //
+    // LIVE GOOGLE SHEET:
+    // https://docs.google.com/spreadsheets/d/1ajTafy2t0VC0mUHPpS4ygHnG6uxfZxSauC_rDtPbqEQ/edit
+    // ═══════════════════════════════════════════════════════════════════════════════
+
+    // ╔═══════════════════════════════════════════════════════════════════════════╗
+    // ║  PASTE YOUR GOOGLE APPS SCRIPT WEB APP URL BELOW                        ║
+    // ║  (Deploy the Apps Script from google_apps_script.js, then paste URL)    ║
+    // ╚═══════════════════════════════════════════════════════════════════════════╝
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyty9ru1P00U8_IODXghpzRlXqSxc8y8FjDkYiDFDq9cBuyqHE4AQj4dHU09dGnh52u_w/exec"; // e.g. "https://script.google.com/macros/s/AKfycb.../exec"
+    const POLL_INTERVAL = 10000; // Refresh every 10s
+
+    const SheetsAPI = {
+      isConfigured: () => APPS_SCRIPT_URL.length > 10,
+      fetchMeetings: async () => {
+        if (!SheetsAPI.isConfigured()) return null;
+        try {
+          const res = await fetch(`${APPS_SCRIPT_URL}?action=getMeetings`);
+          const data = await res.json();
+          if (data.meetings) {
+            return data.meetings.map((m) => ({
+              id: m.id, runner: m.runner || "", timeSlot: m.timeSlot || "",
+              founder: m.company || m.founder || "",
+              investor: m.investor || "", room: m.room || "",
+              rep: m.rep || "",
+              status: (m.status || "pending").toLowerCase(),
+              isPriority: m.isPriority || false,
+              sheetRow: m.sheetRow || null,
+            }));
+          }
+        } catch (e) { console.error("Sheet fetch error:", e); }
+        return null;
+      },
+      updateStatus: async (meetingId, action, startedBy) => {
+        if (!SheetsAPI.isConfigured()) return false;
+        try {
+          await fetch(APPS_SCRIPT_URL, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain" },
+            body: JSON.stringify({ action, meetingId, startedBy }),
+          });
+          return true;
+        } catch (e) { console.error("Sheet update error:", e); return false; }
+      },
+    };
+
+    const MEETINGS_DATA = [
+      { id: 1, runner: "Sumangal", timeSlot: "2:30 PM – 3:00 PM", founder: "IDfy", investor: "Evolvence Equity Partners", room: "FF-Introspect", rep: "Anoushka", status: "pending", isPriority: false },
+      { id: 2, runner: "Sumangal", timeSlot: "2:30 PM – 3:00 PM", founder: "TestMu (formerly Lambdatest)", investor: "IFC", room: "GF-Navigate", rep: "Shalabh Tandon", status: "pending", isPriority: false },
+      { id: 3, runner: "Sumangal", timeSlot: "2:30 PM – 3:00 PM", founder: "Cashify", investor: "Neo Secondaries Fund", room: "FF-Aspire", rep: "Nitin Agarwal", status: "pending", isPriority: false },
+      { id: 4, runner: "Yash", timeSlot: "2:30 PM – 3:00 PM", founder: "Aerem", investor: "Nippon India", room: "GF-Library", rep: "Ankit Agarwal", status: "pending", isPriority: false },
+      { id: 5, runner: "Yash", timeSlot: "2:30 PM – 3:00 PM", founder: "iDO Devices", investor: "Oman Investment Authority", room: "GF-Clout", rep: "Ali Abdulhussain", status: "pending", isPriority: false },
+      { id: 6, runner: "Sumangal", timeSlot: "2:30 PM – 3:00 PM", founder: "Optimo Loans", investor: "Pavilion Capital", room: "FF-Ponder", rep: "Khor Boon How", status: "pending", isPriority: false },
+      { id: 7, runner: "Sumangal", timeSlot: "2:30 PM – 3:00 PM", founder: "Squad", investor: "Transpose Platform", room: "GF-Library", rep: "Fiyin Olayisade", status: "pending", isPriority: false },
+      { id: 8, runner: "Yash", timeSlot: "2:30 PM – 3:00 PM", founder: "Stage", investor: "Transsion", room: "FF-Library", rep: "George Li", status: "pending", isPriority: false },
+      { id: 9, runner: "Yash", timeSlot: "2:30 PM – 3:00 PM", founder: "SuperK", investor: "Unilever Ventures", room: "FF-Buzz", rep: "Pawan Chaturvedi", status: "pending", isPriority: false },
+      { id: 10, runner: "Sumangal", timeSlot: "3:00 PM – 3:30 PM", founder: "IDfy", investor: "GIC", room: "FF-Curate", rep: "Gaurav Jain", status: "pending", isPriority: false },
+      { id: 11, runner: "Sumangal", timeSlot: "3:00 PM – 3:30 PM", founder: "Spinny", investor: "Neo Secondaries Fund", room: "FF-Aspire", rep: "Nitin Agarwal", status: "pending", isPriority: false },
+      { id: 12, runner: "Yash", timeSlot: "3:00 PM – 3:30 PM", founder: "Virohan", investor: "Nippon India", room: "GF-Library", rep: "Ankit Agarwal", status: "pending", isPriority: false },
+      { id: 13, runner: "Sumangal", timeSlot: "3:00 PM – 3:30 PM", founder: "Cashify", investor: "Oman Investment Authority", room: "GF-Clout", rep: "Ali Abdulhussain", status: "pending", isPriority: false },
+      { id: 14, runner: "Sumangal", timeSlot: "3:00 PM – 3:30 PM", founder: "Squad", investor: "Pavilion Capital", room: "FF-Ponder", rep: "Khor Boon How", status: "pending", isPriority: false },
+      { id: 15, runner: "Sumangal", timeSlot: "3:00 PM – 3:30 PM", founder: "TestMu (formerly Lambdatest)", investor: "Prosperity 7", room: "GF-LAZE", rep: "Balsam Alsaif", status: "pending", isPriority: false },
+      { id: 16, runner: "Sumangal", timeSlot: "3:00 PM – 3:30 PM", founder: "Euler Motors", investor: "Transsion", room: "FF-Library", rep: "George Li", status: "pending", isPriority: false },
+      { id: 17, runner: "Yash", timeSlot: "3:00 PM – 3:30 PM", founder: "iDO Devices", investor: "UTEC", room: "FF-Balance", rep: "Kiran", status: "pending", isPriority: false },
+      { id: 18, runner: "Sumangal", timeSlot: "3:30 PM – 4:00 PM", founder: "Cashify", investor: "Evolvence Equity Partners", room: "FF-Introspect", rep: "Anoushka", status: "pending", isPriority: false },
+      { id: 19, runner: "Yash", timeSlot: "3:30 PM – 4:00 PM", founder: "smallcase", investor: "GIC", room: "FF-Curate", rep: "Gaurav Jain", status: "pending", isPriority: false },
+      { id: 20, runner: "Sumangal", timeSlot: "3:30 PM – 4:00 PM", founder: "IDfy", investor: "Mirabilis Investment Trust", room: "FF-Balance", rep: "Boris DSouza", status: "pending", isPriority: false },
+      { id: 21, runner: "Yash", timeSlot: "3:30 PM – 4:00 PM", founder: "iDO Devices", investor: "Neo Secondaries Fund", room: "FF-Aspire", rep: "Nitin Agarwal", status: "pending", isPriority: false },
+      { id: 22, runner: "Sumangal", timeSlot: "3:30 PM – 4:00 PM", founder: "Optimo Loans", investor: "Nippon India", room: "GF-Library", rep: "Ankit Agarwal", status: "pending", isPriority: false },
+      { id: 23, runner: "Sumangal", timeSlot: "3:30 PM – 4:00 PM", founder: "Euler Motors", investor: "Oman Investment Authority", room: "GF-Clout", rep: "Ali Abdulhussain", status: "pending", isPriority: false },
+      { id: 24, runner: "Sumangal", timeSlot: "3:30 PM – 4:00 PM", founder: "TestMu (formerly Lambdatest)", investor: "Pavilion Capital", room: "FF-Ponder", rep: "Khor Boon How", status: "pending", isPriority: false },
+      { id: 25, runner: "Yash", timeSlot: "3:30 PM – 4:00 PM", founder: "Optimized Electrotech", investor: "Prosperity 7", room: "GF-LAZE", rep: "Balsam Alsaif", status: "pending", isPriority: false },
+      { id: 26, runner: "Sumangal", timeSlot: "3:30 PM – 4:00 PM", founder: "Spinny", investor: "Transsion", room: "FF-Library", rep: "George Li", status: "pending", isPriority: false },
+      { id: 27, runner: "Yash", timeSlot: "4:00 PM – 4:30 PM", founder: "Optimized Electrotech", investor: "GIC", room: "FF-Curate", rep: "Gaurav Jain", status: "pending", isPriority: false },
+      { id: 28, runner: "Yash", timeSlot: "4:00 PM – 4:30 PM", founder: "iDO Devices", investor: "IFC", room: "GF-Navigate", rep: "Shalabh Tandon", status: "pending", isPriority: false },
+      { id: 29, runner: "Sumangal", timeSlot: "4:00 PM – 4:30 PM", founder: "Cashify", investor: "Mirabilis Investment Trust", room: "FF-Balance", rep: "Boris DSouza", status: "pending", isPriority: false },
+      { id: 30, runner: "Yash", timeSlot: "4:00 PM – 4:30 PM", founder: "smallcase", investor: "Neo Secondaries Fund", room: "FF-Aspire", rep: "Nitin Agarwal", status: "pending", isPriority: false },
+      { id: 31, runner: "Yash", timeSlot: "4:00 PM – 4:30 PM", founder: "Stage", investor: "Nippon India", room: "GF-Library", rep: "Ankit Agarwal", status: "pending", isPriority: false },
+      { id: 32, runner: "Sumangal", timeSlot: "4:00 PM – 4:30 PM", founder: "IDfy", investor: "Oman Investment Authority", room: "GF-Clout", rep: "Ali Abdulhussain", status: "pending", isPriority: false },
+      { id: 33, runner: "Yash", timeSlot: "4:00 PM – 4:30 PM", founder: "Aerem", investor: "Pavilion Capital", room: "FF-Ponder", rep: "Khor Boon How", status: "pending", isPriority: false },
+      { id: 34, runner: "Sumangal", timeSlot: "4:30 PM – 5:00 PM", founder: "Optimo Loans", investor: "Neo Secondaries Fund", room: "FF-Aspire", rep: "Nitin Agarwal", status: "pending", isPriority: false },
+      { id: 35, runner: "Yash", timeSlot: "4:30 PM – 5:00 PM", founder: "smallcase", investor: "Oman Investment Authority", room: "GF-Clout", rep: "Ali Abdulhussain", status: "pending", isPriority: false },
+      { id: 36, runner: "Yash", timeSlot: "4:30 PM – 5:00 PM", founder: "Optimized Electrotech", investor: "Pavilion Capital", room: "FF-Ponder", rep: "Khor Boon How", status: "pending", isPriority: false },
+      { id: 37, runner: "Yash", timeSlot: "4:30 PM – 5:00 PM", founder: "iDO Devices", investor: "Transsion", room: "FF-Library", rep: "George Li", status: "pending", isPriority: false },
+    ];
+
+    // Staff from the "Work" sheet
+    const STAFF = {
+      founderRunners: ["Sumangal", "Yash"],
+      founderRunnerBackup: "Joseph",
+      investorRunners: ["Udayan", "Apurva"],
+      investorRunnerBackup: "Ankush",
+      registration: "Sreeneedhi",
+    };
+
+    // Room info from the "Work" sheet
+    const ROOMS = [
+      { name: "GF-LAZE", floor: "Ground Floor", capacity: 6 },
+      { name: "GF-Clout", floor: "Ground Floor", capacity: 3 },
+      { name: "GF-Navigate", floor: "Ground Floor", capacity: 10 },
+      { name: "FF-Buzz", floor: "First Floor", capacity: 10 },
+      { name: "FF-Ponder", floor: "First Floor", capacity: 4 },
+      { name: "FF-Balance", floor: "First Floor", capacity: 2 },
+      { name: "FF-Aspire", floor: "First Floor", capacity: 3 },
+      { name: "FF-Curate", floor: "First Floor", capacity: 4 },
+      { name: "FF-Introspect", floor: "First Floor", capacity: 3 },
+      { name: "FF-Library", floor: "First Floor", capacity: 6 },
+      { name: "GF-Library", floor: "Ground Floor", capacity: 14 },
+    ];
+
+    const TIME_SLOTS = [
+      "2:30 PM – 3:00 PM",
+      "3:00 PM – 3:30 PM",
+      "3:30 PM – 4:00 PM",
+      "4:00 PM – 4:30 PM",
+      "4:30 PM – 5:00 PM",
+    ];
+
+    // Investor Runner assignments — parsed from "Investor View" sheet
+    // These are the LP-side view: investor runners escort fund delegations to their fixed room,
+    // and founders rotate in to meet them each slot.
+    const INVESTOR_ASSIGNMENTS = [
+      { id: 101, investorRunner: "Udayan", fund: "GIC", reps: ["Gaurav Jain", "Anand Khetan"], investorRoom: "FF-Curate", timeSlot: "3:00 PM – 3:30 PM", founderCompany: "IDfy" },
+      { id: 102, investorRunner: "Udayan", fund: "GIC", reps: ["Gaurav Jain", "Anand Khetan"], investorRoom: "FF-Curate", timeSlot: "3:30 PM – 4:00 PM", founderCompany: "smallcase" },
+      { id: 103, investorRunner: "Udayan", fund: "GIC", reps: ["Gaurav Jain", "Anand Khetan"], investorRoom: "FF-Curate", timeSlot: "4:00 PM – 4:30 PM", founderCompany: "Optimized Electrotech" },
+      { id: 104, investorRunner: "Udayan", fund: "IFC", reps: ["Shalabh Tandon", "Treasa Mathew", "R. Hirawat", "Gordon Chan"], investorRoom: "GF-Navigate", timeSlot: "2:30 PM – 3:00 PM", founderCompany: "TestMu (Lambdatest)" },
+      { id: 105, investorRunner: "Udayan", fund: "IFC", reps: ["Shalabh Tandon", "Treasa Mathew", "R. Hirawat", "Gordon Chan"], investorRoom: "GF-Navigate", timeSlot: "4:00 PM – 4:30 PM", founderCompany: "iDO Devices" },
+      { id: 106, investorRunner: "Udayan", fund: "Oman Investment Authority", reps: ["Ali Abdulhussain", "Mahmoud Al Khatri"], investorRoom: "GF-Clout", timeSlot: "2:30 PM – 3:00 PM", founderCompany: "iDO Devices" },
+      { id: 107, investorRunner: "Udayan", fund: "Oman Investment Authority", reps: ["Ali Abdulhussain", "Mahmoud Al Khatri"], investorRoom: "GF-Clout", timeSlot: "3:00 PM – 3:30 PM", founderCompany: "Cashify" },
+      { id: 108, investorRunner: "Udayan", fund: "Oman Investment Authority", reps: ["Ali Abdulhussain", "Mahmoud Al Khatri"], investorRoom: "GF-Clout", timeSlot: "3:30 PM – 4:00 PM", founderCompany: "Euler Motors" },
+      { id: 109, investorRunner: "Udayan", fund: "Oman Investment Authority", reps: ["Ali Abdulhussain", "Mahmoud Al Khatri"], investorRoom: "GF-Clout", timeSlot: "4:00 PM – 4:30 PM", founderCompany: "IDfy" },
+      { id: 110, investorRunner: "Udayan", fund: "Oman Investment Authority", reps: ["Ali Abdulhussain", "Mahmoud Al Khatri"], investorRoom: "GF-Clout", timeSlot: "4:30 PM – 5:00 PM", founderCompany: "smallcase" },
+      { id: 111, investorRunner: "Udayan", fund: "Neo Secondaries Fund", reps: ["Nitin Agarwal"], investorRoom: "FF-Aspire", timeSlot: "2:30 PM – 3:00 PM", founderCompany: "Cashify" },
+      { id: 112, investorRunner: "Udayan", fund: "Neo Secondaries Fund", reps: ["Nitin Agarwal"], investorRoom: "FF-Aspire", timeSlot: "3:00 PM – 3:30 PM", founderCompany: "Spinny" },
+      { id: 113, investorRunner: "Udayan", fund: "Neo Secondaries Fund", reps: ["Nitin Agarwal"], investorRoom: "FF-Aspire", timeSlot: "3:30 PM – 4:00 PM", founderCompany: "iDO Devices" },
+      { id: 114, investorRunner: "Udayan", fund: "Neo Secondaries Fund", reps: ["Nitin Agarwal"], investorRoom: "FF-Aspire", timeSlot: "4:00 PM – 4:30 PM", founderCompany: "smallcase" },
+      { id: 115, investorRunner: "Udayan", fund: "Neo Secondaries Fund", reps: ["Nitin Agarwal"], investorRoom: "FF-Aspire", timeSlot: "4:30 PM – 5:00 PM", founderCompany: "Optimo Loans" },
+      { id: 116, investorRunner: "Udayan", fund: "Pavilion Capital", reps: ["Khor Boon How", "Sam"], investorRoom: "FF-Ponder", timeSlot: "2:30 PM – 3:00 PM", founderCompany: "Optimo Loans" },
+      { id: 117, investorRunner: "Udayan", fund: "Pavilion Capital", reps: ["Khor Boon How", "Sam"], investorRoom: "FF-Ponder", timeSlot: "3:00 PM – 3:30 PM", founderCompany: "Squad" },
+      { id: 118, investorRunner: "Udayan", fund: "Pavilion Capital", reps: ["Khor Boon How", "Sam"], investorRoom: "FF-Ponder", timeSlot: "3:30 PM – 4:00 PM", founderCompany: "TestMu (Lambdatest)" },
+      { id: 119, investorRunner: "Udayan", fund: "Pavilion Capital", reps: ["Khor Boon How", "Sam"], investorRoom: "FF-Ponder", timeSlot: "4:00 PM – 4:30 PM", founderCompany: "Aerem" },
+      { id: 120, investorRunner: "Udayan", fund: "Pavilion Capital", reps: ["Khor Boon How", "Sam"], investorRoom: "FF-Ponder", timeSlot: "4:30 PM – 5:00 PM", founderCompany: "Optimized Electrotech" },
+      { id: 121, investorRunner: "Udayan", fund: "Nippon India", reps: ["Ankit Agarwal"], investorRoom: "GF-Library", timeSlot: "2:30 PM – 3:00 PM", founderCompany: "Aerem" },
+      { id: 122, investorRunner: "Udayan", fund: "Nippon India", reps: ["Ankit Agarwal"], investorRoom: "GF-Library", timeSlot: "3:00 PM – 3:30 PM", founderCompany: "Virohan" },
+      { id: 123, investorRunner: "Udayan", fund: "Nippon India", reps: ["Ankit Agarwal"], investorRoom: "GF-Library", timeSlot: "3:30 PM – 4:00 PM", founderCompany: "Optimo Loans" },
+      { id: 124, investorRunner: "Udayan", fund: "Nippon India", reps: ["Ankit Agarwal"], investorRoom: "GF-Library", timeSlot: "4:00 PM – 4:30 PM", founderCompany: "Stage" },
+      { id: 125, investorRunner: "Apurva", fund: "Transsion", reps: ["George Li"], investorRoom: "FF-Library", timeSlot: "2:30 PM – 3:00 PM", founderCompany: "Stage" },
+      { id: 126, investorRunner: "Apurva", fund: "Transsion", reps: ["George Li"], investorRoom: "FF-Library", timeSlot: "3:00 PM – 3:30 PM", founderCompany: "Euler Motors" },
+      { id: 127, investorRunner: "Apurva", fund: "Transsion", reps: ["George Li"], investorRoom: "FF-Library", timeSlot: "3:30 PM – 4:00 PM", founderCompany: "Spinny" },
+      { id: 128, investorRunner: "Apurva", fund: "Transsion", reps: ["George Li"], investorRoom: "FF-Library", timeSlot: "4:30 PM – 5:00 PM", founderCompany: "iDO Devices" },
+      { id: 129, investorRunner: "Apurva", fund: "Catamaran", reps: ["Sheetal Bhat"], investorRoom: "FF-Balance", timeSlot: "2:30 PM – 3:00 PM", founderCompany: "Optimized Electrotech" },
+      { id: 130, investorRunner: "Apurva", fund: "Catamaran", reps: ["Sheetal Bhat"], investorRoom: "FF-Balance", timeSlot: "3:00 PM – 3:30 PM", founderCompany: "iDO Devices" },
+      { id: 131, investorRunner: "Apurva", fund: "Unilever Ventures", reps: ["Pawan Chaturvedi", "Devesh Papney", "Priyanka Thakkar"], investorRoom: "FF-Buzz", timeSlot: "2:30 PM – 3:00 PM", founderCompany: "SuperK" },
+      { id: 132, investorRunner: "Apurva", fund: "Transpose Platform", reps: ["Fiyin Olayisade", "Shashank P S"], investorRoom: "GF-Library", timeSlot: "2:30 PM – 3:00 PM", founderCompany: "Squad" },
+      { id: 133, investorRunner: "Apurva", fund: "Evolvence Equity Partners", reps: ["Anoushka"], investorRoom: "FF-Introspect", timeSlot: "2:30 PM – 3:00 PM", founderCompany: "IDfy" },
+      { id: 134, investorRunner: "Apurva", fund: "Evolvence Equity Partners", reps: ["Anoushka"], investorRoom: "FF-Introspect", timeSlot: "3:30 PM – 4:00 PM", founderCompany: "Cashify" },
+      { id: 135, investorRunner: "Apurva", fund: "Mirabilis Investment Trust", reps: ["Boris DSouza"], investorRoom: "FF-Balance", timeSlot: "3:30 PM – 4:00 PM", founderCompany: "IDfy" },
+      { id: 136, investorRunner: "Apurva", fund: "Mirabilis Investment Trust", reps: ["Boris DSouza"], investorRoom: "FF-Balance", timeSlot: "4:00 PM – 4:30 PM", founderCompany: "Cashify" },
+      { id: 137, investorRunner: "Apurva", fund: "Prosperity 7", reps: ["Balsam Alsaif", "Raed Twaily", "Omar Alnammary", "Abhishek Shukla"], investorRoom: "GF-LAZE", timeSlot: "3:00 PM – 3:30 PM", founderCompany: "TestMu (Lambdatest)" },
+      { id: 138, investorRunner: "Apurva", fund: "Prosperity 7", reps: ["Balsam Alsaif", "Raed Twaily", "Omar Alnammary", "Abhishek Shukla"], investorRoom: "GF-LAZE", timeSlot: "3:30 PM – 4:00 PM", founderCompany: "Optimized Electrotech" },
+    ];
+
+    // ─── Context ─────────────────────────────────────────────────────────────────
+    const AppContext = createContext();
+
+    function AppProvider({ children }) {
+      const [meetings, setMeetings] = useState(MEETINGS_DATA);
+      const [investorAssignments, setInvestorAssignments] = useState(
+        INVESTOR_ASSIGNMENTS.map((a) => ({ ...a, status: "pending" }))
+      );
+      const [view, setView] = useState("splash");
+      const [prevView, setPrevView] = useState("splash");
+      const [selectedRunner, setSelectedRunner] = useState(null);
+      const [runnerRole, setRunnerRole] = useState(null);
+      const [isLive, setIsLive] = useState(false);
+      const [lastSync, setLastSync] = useState(null);
+      const [syncing, setSyncing] = useState(false);
+      const pollRef = useRef(null);
+
+      // Fetch from Google Sheet and merge into state
+      const refreshFromSheet = useCallback(async (quiet) => {
+        if (!quiet) setSyncing(true);
+        const sheetData = await SheetsAPI.fetchMeetings();
+        if (sheetData && sheetData.length > 0) {
+          setMeetings(sheetData);
+          setIsLive(true);
+          setLastSync(new Date());
+        }
+        if (!quiet) setSyncing(false);
+      }, []);
+
+      // Poll on mount
+      useEffect(() => {
+        refreshFromSheet();
+        if (SheetsAPI.isConfigured()) {
+          pollRef.current = setInterval(() => refreshFromSheet(true), POLL_INTERVAL);
+        }
+        return () => { if (pollRef.current) clearInterval(pollRef.current); };
+      }, [refreshFromSheet]);
+
+      const startMeeting = useCallback(async (id) => {
+        // Optimistic update
+        setMeetings((prev) => prev.map((m) => (m.id === id ? { ...m, status: "started" } : m)));
+        // Write to Google Sheet
+        await SheetsAPI.updateStatus(id, "startMeeting", selectedRunner || "");
+      }, [selectedRunner]);
+
+      const resetMeeting = useCallback(async (id) => {
+        setMeetings((prev) => prev.map((m) => (m.id === id ? { ...m, status: "pending" } : m)));
+        await SheetsAPI.updateStatus(id, "resetMeeting", "");
+      }, []);
+
+      const startInvestorMeeting = useCallback(async (id) => {
+        setInvestorAssignments((prev) => prev.map((a) => (a.id === id ? { ...a, status: "started" } : a)));
+        const assignment = INVESTOR_ASSIGNMENTS.find((a) => a.id === id);
+        if (!assignment) return;
+        // Find matching founder-side meeting and start it too
+        setMeetings((prev) => {
+          let matchedId = null;
+          const updated = prev.map((m) => {
+            const mCompany = (m.founder.split(" / ")[1] || "").toLowerCase();
+            const aCompany = assignment.founderCompany.toLowerCase();
+            if (m.investor.toLowerCase() === assignment.fund.toLowerCase() && m.timeSlot === assignment.timeSlot && mCompany.includes(aCompany)) {
+              matchedId = m.id;
+              return { ...m, status: "started" };
+            }
+            return m;
+          });
+          // Write matched meeting to sheet
+          if (matchedId) SheetsAPI.updateStatus(matchedId, "startMeeting", selectedRunner || "");
+          return updated;
+        });
+      }, [selectedRunner]);
+
+      const resetInvestorMeeting = useCallback(async (id) => {
+        setInvestorAssignments((prev) => prev.map((a) => (a.id === id ? { ...a, status: "pending" } : a)));
+        const assignment = INVESTOR_ASSIGNMENTS.find((a) => a.id === id);
+        if (!assignment) return;
+        setMeetings((prev) => prev.map((m) => {
+          const mCompany = (m.founder.split(" / ")[1] || "").toLowerCase();
+          const aCompany = assignment.founderCompany.toLowerCase();
+          if (m.investor.toLowerCase() === assignment.fund.toLowerCase() && m.timeSlot === assignment.timeSlot && mCompany.includes(aCompany)) {
+            SheetsAPI.updateStatus(m.id, "resetMeeting", "");
+            return { ...m, status: "pending" };
+          }
+          return m;
+        }));
+      }, []);
+
+      const openSearch = useCallback(() => { setPrevView(view); setView("lookup"); }, [view]);
+      const closeSearch = useCallback(() => { setView(prevView === "lookup" ? "splash" : prevView); }, [prevView]);
+
+      const stats = useMemo(() => {
+        const started = meetings.filter((m) => m.status === "started").length;
+        return { started, total: meetings.length, pct: Math.round((started / meetings.length) * 100) };
+      }, [meetings]);
+
+      return (
+        <AppContext.Provider value={{ meetings, investorAssignments, startMeeting, resetMeeting, startInvestorMeeting, resetInvestorMeeting, view, setView, selectedRunner, setSelectedRunner, runnerRole, setRunnerRole, stats, ROOMS, openSearch, closeSearch, isLive, lastSync, syncing, refreshFromSheet }}>
+          {children}
+        </AppContext.Provider>
+      );
+    }
+
+    const useApp = () => useContext(AppContext);
+
+    // ─── Clock ───────────────────────────────────────────────────────────────────
+    function useClock() {
+      const [time, setTime] = useState(new Date());
+      useEffect(() => {
+        const id = setInterval(() => setTime(new Date()), 1000);
+        return () => clearInterval(id);
+      }, []);
+      return time.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+    }
+
+    // ─── Sync Badge (shows live/offline connection to Google Sheet) ──────────────
+    function SyncBadge({ compact }) {
+      const { isLive, syncing, refreshFromSheet } = useApp();
+      const configured = SheetsAPI.isConfigured();
+      if (!configured) {
+        return (
+          <div style={{ display: "flex", alignItems: "center", gap: 5, padding: compact ? "3px 8px" : "4px 10px", borderRadius: 8, background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.15)" }}>
+            <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#f59e0b" }} />
+            <span style={{ fontSize: 10, fontWeight: 600, color: "#f59e0b" }}>Offline</span>
+          </div>
+        );
+      }
+      return (
+        <button onClick={() => refreshFromSheet()} style={{ display: "flex", alignItems: "center", gap: 5, padding: compact ? "3px 8px" : "4px 10px", borderRadius: 8, background: isLive ? "rgba(46,204,112,0.06)" : "rgba(255,255,255,0.04)", border: `1px solid ${isLive ? "rgba(46,204,112,0.15)" : "rgba(255,255,255,0.08)"}`, cursor: "pointer", fontFamily: "Manrope, sans-serif" }}>
+          <div style={{ width: 6, height: 6, borderRadius: "50%", background: isLive ? "#2ecc70" : "#666", animation: syncing ? "pulse-glow 0.5s infinite" : isLive ? "pulse-glow 3s infinite" : "none" }} />
+          <span style={{ fontSize: 10, fontWeight: 600, color: isLive ? "#2ecc70" : "rgba(255,255,255,0.3)" }}>{syncing ? "Syncing…" : isLive ? "Live" : "Connecting…"}</span>
+        </button>
+      );
+    }
+
+    // ─── Splash Screen ───────────────────────────────────────────────────────────
+    function SplashScreen() {
+      const { setView, stats } = useApp();
+      const [fadeIn, setFadeIn] = useState(false);
+      useEffect(() => { setTimeout(() => setFadeIn(true), 50); }, []);
+
+      return (
+        <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "radial-gradient(ellipse at 50% 30%, rgba(46,204,112,0.06) 0%, #050505 70%)", position: "relative", opacity: fadeIn ? 1 : 0, transition: "opacity 0.8s ease" }}>
+          <div style={{ position: "absolute", top: 20, right: 20 }}><SyncBadge /></div>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+            <div style={{ fontSize: 64, filter: "drop-shadow(0 0 30px rgba(46,204,112,0.3))" }}>🦢</div>
+            <h1 style={{ fontSize: 46, fontWeight: 800, letterSpacing: "-0.03em", color: "#fff", lineHeight: 1 }}>BluSwan</h1>
+            <p style={{ fontSize: 13, fontWeight: 600, letterSpacing: "0.25em", color: "rgba(255,255,255,0.3)", textTransform: "uppercase" }}>2026 · LP-AGM Speed Dating</p>
+            <p style={{ fontSize: 11, color: "rgba(255,255,255,0.15)", marginTop: 4 }}>{stats.total} meetings · {stats.started} live</p>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12, width: "100%", maxWidth: 320, marginTop: 48 }}>
+            <button onClick={() => setView("runner-login")} className="btn-splash-primary">
+              <span style={{ fontSize: 20 }}>📱</span> Founder Runner
+            </button>
+            <button onClick={() => setView("investor-runner-login")} className="btn-splash-investor">
+              <span style={{ fontSize: 20 }}>💼</span> Investor Runner
+            </button>
+            <button onClick={() => setView("concierge")} className="btn-splash-secondary">
+              <span style={{ fontSize: 20 }}>🖥️</span> Concierge iPad
+            </button>
+          </div>
+          <a href="https://docs.google.com/spreadsheets/d/1ajTafy2t0VC0mUHPpS4ygHnG6uxfZxSauC_rDtPbqEQ/edit" target="_blank" rel="noopener noreferrer" style={{ position: "absolute", bottom: 60, fontSize: 11, color: "rgba(255,255,255,0.15)", letterSpacing: "0.1em", textDecoration: "none", borderBottom: "1px solid rgba(255,255,255,0.08)", paddingBottom: 2 }}>
+            📊 View Source Sheet
+          </a>
+          {!SheetsAPI.isConfigured() && (
+            <div style={{ position: "absolute", bottom: 16, maxWidth: 340, textAlign: "center", padding: "10px 14px", background: "rgba(245,158,11,0.05)", border: "1px solid rgba(245,158,11,0.12)", borderRadius: 10 }}>
+              <p style={{ fontSize: 10, color: "#f59e0b", fontWeight: 600 }}>⚠️ Offline mode — deploy Apps Script to sync with Google Sheets</p>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ─── Runner Login ────────────────────────────────────────────────────────────
+    function RunnerLogin() {
+      const { setView, setSelectedRunner, meetings } = useApp();
+      const pick = (name) => { setSelectedRunner(name); setView("runner"); };
+
+      return (
+        <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "radial-gradient(ellipse at 50% 20%, rgba(46,204,112,0.04) 0%, #0d1a11 50%, #050505 100%)", padding: 24, position: "relative" }}>
+          <button onClick={() => setView("splash")} className="back-btn">← Back</button>
+          <div style={{ textAlign: "center", marginBottom: 40 }}>
+            <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.2em", color: "#2ecc70", textTransform: "uppercase", marginBottom: 8 }}>BluSwan 2026</p>
+            <h2 style={{ fontSize: 28, fontWeight: 800, color: "#fff", letterSpacing: "-0.02em" }}>Who's running?</h2>
+            <p style={{ fontSize: 14, color: "rgba(255,255,255,0.4)", marginTop: 6 }}>Select your name to see founder assignments</p>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12, width: "100%", maxWidth: 360 }}>
+            {STAFF.founderRunners.map((name) => {
+              const count = meetings.filter((m) => m.runner === name).length;
+              return (
+                <button key={name} onClick={() => pick(name)} className="runner-pick-btn">
+                  <div className="runner-avatar">{name[0]}</div>
+                  <div style={{ textAlign: "left", flex: 1 }}>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: "#fff" }}>{name}</div>
+                    <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", fontWeight: 500 }}>Founder Runner · {count} meetings</div>
+                  </div>
+                  <span style={{ color: "rgba(255,255,255,0.2)", fontSize: 22 }}>→</span>
+                </button>
+              );
+            })}
+            <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "8px 0" }} />
+            <button onClick={() => pick(STAFF.founderRunnerBackup)} className="runner-pick-btn" style={{ opacity: 0.6 }}>
+              <div className="runner-avatar" style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.4)", borderColor: "rgba(255,255,255,0.1)" }}>J</div>
+              <div style={{ textAlign: "left", flex: 1 }}>
+                <div style={{ fontSize: 16, fontWeight: 600, color: "rgba(255,255,255,0.7)" }}>{STAFF.founderRunnerBackup}</div>
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", fontWeight: 500 }}>Backup Runner</div>
+              </div>
+              <span style={{ color: "rgba(255,255,255,0.1)", fontSize: 22 }}>→</span>
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    // ─── Runner View ─────────────────────────────────────────────────────────────
+    function RunnerView() {
+      const { meetings, startMeeting, resetMeeting, selectedRunner, setView, openSearch } = useApp();
+      const clock = useClock();
+      const [selectedSlot, setSelectedSlot] = useState(TIME_SLOTS[0]);
+      const [confirmId, setConfirmId] = useState(null);
+
+      const myMeetings = meetings.filter((m) => m.runner === selectedRunner && m.timeSlot === selectedSlot);
+      const allMyMeetings = meetings.filter((m) => m.runner === selectedRunner);
+      const liveCount = allMyMeetings.filter((m) => m.status === "started").length;
+      const totalCount = allMyMeetings.length;
+
+      // Count meetings per slot for badges
+      const slotCounts = useMemo(() => {
+        const counts = {};
+        TIME_SLOTS.forEach((s) => {
+          const slotMeetings = meetings.filter((m) => m.runner === selectedRunner && m.timeSlot === s);
+          counts[s] = { total: slotMeetings.length, live: slotMeetings.filter((m) => m.status === "started").length };
+        });
+        return counts;
+      }, [meetings, selectedRunner]);
+
+      const handleStart = (id) => {
+        if (confirmId === id) { startMeeting(id); setConfirmId(null); }
+        else { setConfirmId(id); }
+      };
+
+      return (
+        <div className="runner-view">
+          <header className="runner-header">
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <button onClick={() => setView("runner-login")} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.5)", fontSize: 20, cursor: "pointer", padding: 0 }}>←</button>
+              <div className="runner-avatar-sm">{selectedRunner?.[0]}</div>
+              <div>
+                <div style={{ fontSize: 17, fontWeight: 700, color: "#fff", lineHeight: 1.2 }}>{selectedRunner}</div>
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em" }}>Founder Runner</div>
+              </div>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <SyncBadge compact />
+              <div className="active-badge">
+                <div className="pulse-dot" />
+                <span style={{ color: "#2ecc70", fontSize: 13, fontWeight: 700 }}>{liveCount}/{totalCount}</span>
+              </div>
+            </div>
+          </header>
+
+          {/* Time Slot Tabs */}
+          <div className="slot-tabs">
+            {TIME_SLOTS.map((slot) => {
+              const sc = slotCounts[slot] || { total: 0, live: 0 };
+              const shortLabel = slot.split(" – ")[0];
+              return (
+                <button key={slot} onClick={() => { setSelectedSlot(slot); setConfirmId(null); }}
+                  className={selectedSlot === slot ? "slot-tab-active" : "slot-tab"}>
+                  {shortLabel}
+                  {sc.total > 0 && (
+                    <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 800, opacity: 0.7, background: selectedSlot === slot ? "rgba(0,0,0,0.2)" : "rgba(255,255,255,0.1)", padding: "1px 6px", borderRadius: 99 }}>
+                      {sc.live > 0 ? `${sc.live}/${sc.total}` : sc.total}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Meeting Cards */}
+          <main className="runner-main">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 20, padding: "0 4px" }}>
+              <h2 style={{ fontSize: 22, fontWeight: 800, color: "#fff", letterSpacing: "-0.01em" }}>Your Meetings</h2>
+              <span style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", fontWeight: 500 }}>{clock}</span>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              {myMeetings.length === 0 && (
+                <div style={{ textAlign: "center", padding: "48px 0", color: "rgba(255,255,255,0.3)" }}>
+                  <p style={{ fontSize: 40, marginBottom: 12 }}>☕</p>
+                  <p style={{ fontSize: 14 }}>No meetings this slot — you're free!</p>
+                </div>
+              )}
+              {myMeetings.map((m) => (
+                <RunnerMeetingCard key={m.id} meeting={m} confirmId={confirmId} onStart={handleStart} onCancel={() => setConfirmId(null)} onReset={resetMeeting} />
+              ))}
+            </div>
+          </main>
+
+          {/* Bottom Nav */}
+          <nav className="runner-nav">
+            <button onClick={() => setView("concierge")} className="nav-item" title="Switch to Concierge">
+              <span style={{ fontSize: 20 }}>🖥️</span>
+              <span style={{ fontSize: 10, fontWeight: 600, marginTop: 2 }}>iPad View</span>
+            </button>
+            <div className="nav-item nav-item-active">
+              <span style={{ fontSize: 20 }}>📋</span>
+              <span style={{ fontSize: 10, fontWeight: 700, marginTop: 2, color: "#2ecc70" }}>My Meetings</span>
+            </div>
+            <button onClick={openSearch} className="nav-item">
+              <span style={{ fontSize: 20 }}>🔍</span>
+              <span style={{ fontSize: 10, fontWeight: 600, marginTop: 2 }}>Lookup</span>
+            </button>
+          </nav>
+        </div>
+      );
+    }
+
+    function RunnerMeetingCard({ meeting, confirmId, onStart, onCancel, onReset }) {
+      const isStarted = meeting.status === "started";
+      const isConfirming = confirmId === meeting.id;
+      const parts = meeting.founder.split(" / ");
+      const founderName = parts[0] || "";
+      const companyName = parts[1] || meeting.founder;
+      const roomInfo = ROOMS.find((r) => r.name === meeting.room);
+
+      return (
+        <article className={isStarted ? "meeting-card-live" : "meeting-card-pending"}>
+          {isStarted && <div className="card-glow" />}
+          <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", gap: 12 }}>
+            {/* Top row */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div className={isStarted ? "status-badge-live" : "status-badge-pending"}>
+                {isStarted && <div className="pulse-dot-sm" />}
+                <span>{isStarted ? "LIVE" : "PENDING"}</span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                {meeting.isPriority && <span style={{ fontSize: 14 }} title="Top 3 Request">⭐</span>}
+              </div>
+            </div>
+
+            {/* Company & Founder */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <h3 style={{ fontSize: 22, fontWeight: 800, color: "#fff", lineHeight: 1.2, marginBottom: 3 }}>{companyName}</h3>
+                <p style={{ fontSize: 13, color: "rgba(255,255,255,0.5)" }}>{founderName} · Founder</p>
+              </div>
+              <div className="founder-monogram">{companyName[0]}</div>
+            </div>
+
+            {/* Room */}
+            <div style={{ display: "flex", alignItems: "center", gap: 6, color: isStarted ? "#2ecc70" : "rgba(255,255,255,0.4)" }}>
+              <span style={{ fontSize: 14 }}>📍</span>
+              <span style={{ fontSize: 14, fontWeight: 700 }}>{meeting.room}</span>
+              {roomInfo && <span style={{ fontSize: 11, color: "rgba(255,255,255,0.25)", marginLeft: 4 }}>· {roomInfo.floor}</span>}
+            </div>
+
+            {/* Investor */}
+            <div style={{ padding: "10px 14px", background: "rgba(255,255,255,0.03)", borderRadius: 12, border: "1px solid rgba(255,255,255,0.06)" }}>
+              <p style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 2 }}>Investor (LP)</p>
+              <p style={{ fontSize: 15, color: "rgba(255,255,255,0.85)", fontWeight: 600 }}>{meeting.investor}</p>
+            </div>
+
+            {/* Actions */}
+            {!isStarted && (
+              isConfirming ? (
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button onClick={() => onStart(meeting.id)} className="btn-confirm-yes">✓ Confirm Start</button>
+                  <button onClick={onCancel} className="btn-confirm-no">Cancel</button>
+                </div>
+              ) : (
+                <button onClick={() => onStart(meeting.id)} className="btn-start">
+                  <span>▶</span> Start Meeting
+                </button>
+              )
+            )}
+            {isStarted && (
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <div className="started-banner" style={{ flex: 1 }}>
+                  <div className="pulse-dot-sm" />
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "#2ecc70" }}>In Progress</span>
+                </div>
+                <button onClick={() => onReset(meeting.id)} style={{ background: "none", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 99, padding: "8px 14px", fontSize: 11, color: "rgba(255,255,255,0.3)", cursor: "pointer", fontFamily: "Manrope, sans-serif", fontWeight: 600 }}>
+                  Undo
+                </button>
+              </div>
+            )}
+          </div>
+        </article>
+      );
+    }
+
+    // ─── Investor Runner Login ────────────────────────────────────────────────────
+    function InvestorRunnerLogin() {
+      const { setView, setSelectedRunner, setRunnerRole, investorAssignments } = useApp();
+      const pick = (name) => { setSelectedRunner(name); setRunnerRole("investor"); setView("investor-runner"); };
+
+      return (
+        <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "radial-gradient(ellipse at 50% 20%, rgba(99,102,241,0.04) 0%, #0d1118 50%, #050505 100%)", padding: 24, position: "relative" }}>
+          <button onClick={() => setView("splash")} className="back-btn">← Back</button>
+          <div style={{ textAlign: "center", marginBottom: 40 }}>
+            <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.2em", color: "#818cf8", textTransform: "uppercase", marginBottom: 8 }}>BluSwan 2026</p>
+            <h2 style={{ fontSize: 28, fontWeight: 800, color: "#fff", letterSpacing: "-0.02em" }}>Investor Runner</h2>
+            <p style={{ fontSize: 14, color: "rgba(255,255,255,0.4)", marginTop: 6 }}>You escort LP delegations to their rooms</p>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12, width: "100%", maxWidth: 360 }}>
+            {STAFF.investorRunners.map((name) => {
+              const count = investorAssignments.filter((a) => a.investorRunner === name).length;
+              const funds = [...new Set(investorAssignments.filter((a) => a.investorRunner === name).map((a) => a.fund))].length;
+              return (
+                <button key={name} onClick={() => pick(name)} className="runner-pick-btn" style={{ borderColor: "rgba(129,140,248,0.15)" }}>
+                  <div className="investor-avatar">{name[0]}</div>
+                  <div style={{ textAlign: "left", flex: 1 }}>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: "#fff" }}>{name}</div>
+                    <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", fontWeight: 500 }}>Investor Runner · {funds} funds · {count} meetings</div>
+                  </div>
+                  <span style={{ color: "rgba(255,255,255,0.2)", fontSize: 22 }}>→</span>
+                </button>
+              );
+            })}
+            <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "8px 0" }} />
+            <button onClick={() => pick(STAFF.investorRunnerBackup)} className="runner-pick-btn" style={{ opacity: 0.6, borderColor: "rgba(129,140,248,0.08)" }}>
+              <div className="investor-avatar" style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.4)", borderColor: "rgba(255,255,255,0.1)" }}>A</div>
+              <div style={{ textAlign: "left", flex: 1 }}>
+                <div style={{ fontSize: 16, fontWeight: 600, color: "rgba(255,255,255,0.7)" }}>{STAFF.investorRunnerBackup}</div>
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", fontWeight: 500 }}>Backup Runner</div>
+              </div>
+              <span style={{ color: "rgba(255,255,255,0.1)", fontSize: 22 }}>→</span>
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    // ─── Investor Runner View ────────────────────────────────────────────────────
+    function InvestorRunnerView() {
+      const { investorAssignments, startInvestorMeeting, resetInvestorMeeting, selectedRunner, setView, openSearch } = useApp();
+      const clock = useClock();
+      const [selectedSlot, setSelectedSlot] = useState(TIME_SLOTS[0]);
+      const [confirmId, setConfirmId] = useState(null);
+      const [groupBy, setGroupBy] = useState("time"); // "time" or "fund"
+
+      const myAssignments = investorAssignments.filter((a) => a.investorRunner === selectedRunner);
+      const slotAssignments = myAssignments.filter((a) => a.timeSlot === selectedSlot);
+      const liveCount = myAssignments.filter((a) => a.status === "started").length;
+      const totalCount = myAssignments.length;
+
+      // Unique funds for this runner
+      const myFunds = useMemo(() => {
+        const fundMap = {};
+        myAssignments.forEach((a) => {
+          if (!fundMap[a.fund]) fundMap[a.fund] = { fund: a.fund, reps: a.reps, room: a.investorRoom, meetings: [] };
+          fundMap[a.fund].meetings.push(a);
+        });
+        return Object.values(fundMap);
+      }, [myAssignments]);
+
+      const slotCounts = useMemo(() => {
+        const counts = {};
+        TIME_SLOTS.forEach((s) => {
+          const sa = myAssignments.filter((a) => a.timeSlot === s);
+          counts[s] = { total: sa.length, live: sa.filter((a) => a.status === "started").length };
+        });
+        return counts;
+      }, [myAssignments]);
+
+      const handleStart = (id) => {
+        if (confirmId === id) { startInvestorMeeting(id); setConfirmId(null); }
+        else { setConfirmId(id); }
+      };
+
+      return (
+        <div className="runner-view" style={{ background: "#0d1118" }}>
+          <header className="runner-header" style={{ background: "linear-gradient(to bottom, #0d1118, rgba(13,17,24,0.95))" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <button onClick={() => setView("investor-runner-login")} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.5)", fontSize: 20, cursor: "pointer", padding: 0 }}>←</button>
+              <div className="investor-avatar-sm">{selectedRunner?.[0]}</div>
+              <div>
+                <div style={{ fontSize: 17, fontWeight: 700, color: "#fff", lineHeight: 1.2 }}>{selectedRunner}</div>
+                <div style={{ fontSize: 11, color: "rgba(129,140,248,0.6)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em" }}>Investor Runner</div>
+              </div>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(129,140,248,0.08)", border: "1px solid rgba(129,140,248,0.15)", borderRadius: 999, padding: "6px 14px 6px 10px" }}>
+                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#818cf8", animation: "pulse-glow 2s infinite" }} />
+                <span style={{ color: "#818cf8", fontSize: 13, fontWeight: 700 }}>{liveCount}/{totalCount}</span>
+              </div>
+            </div>
+          </header>
+
+          {/* Group toggle + Slot tabs */}
+          <div style={{ padding: "8px 16px 0", background: "rgba(13,17,24,0.95)", position: "sticky", top: 70, zIndex: 10, backdropFilter: "blur(8px)" }}>
+            <div style={{ display: "flex", gap: 4, marginBottom: 10 }}>
+              <button onClick={() => setGroupBy("time")} className={groupBy === "time" ? "inv-toggle-active" : "inv-toggle"}>By Time Slot</button>
+              <button onClick={() => setGroupBy("fund")} className={groupBy === "fund" ? "inv-toggle-active" : "inv-toggle"}>By Fund</button>
+            </div>
+            {groupBy === "time" && (
+              <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 14 }}>
+                {TIME_SLOTS.map((slot) => {
+                  const sc = slotCounts[slot] || { total: 0, live: 0 };
+                  const shortLabel = slot.split(" – ")[0];
+                  return (
+                    <button key={slot} onClick={() => { setSelectedSlot(slot); setConfirmId(null); }}
+                      className={selectedSlot === slot ? "inv-slot-active" : "inv-slot"}>
+                      {shortLabel}
+                      {sc.total > 0 && (
+                        <span style={{ marginLeft: 5, fontSize: 10, fontWeight: 800, opacity: 0.7, background: selectedSlot === slot ? "rgba(0,0,0,0.2)" : "rgba(255,255,255,0.1)", padding: "1px 6px", borderRadius: 99 }}>
+                          {sc.live > 0 ? `${sc.live}/${sc.total}` : sc.total}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Content */}
+          <main className="runner-main">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 20, padding: "0 4px" }}>
+              <h2 style={{ fontSize: 22, fontWeight: 800, color: "#fff", letterSpacing: "-0.01em" }}>
+                {groupBy === "fund" ? "Your Funds" : "Your Meetings"}
+              </h2>
+              <span style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", fontWeight: 500 }}>{clock}</span>
+            </div>
+
+            {groupBy === "time" ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                {slotAssignments.length === 0 && (
+                  <div style={{ textAlign: "center", padding: "48px 0", color: "rgba(255,255,255,0.3)" }}>
+                    <p style={{ fontSize: 40, marginBottom: 12 }}>☕</p>
+                    <p style={{ fontSize: 14 }}>No meetings this slot</p>
+                  </div>
+                )}
+                {slotAssignments.map((a) => (
+                  <InvestorMeetingCard key={a.id} assignment={a} confirmId={confirmId} onStart={handleStart} onCancel={() => setConfirmId(null)} onReset={resetInvestorMeeting} />
+                ))}
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+                {myFunds.map((fundGroup) => {
+                  const fundLive = fundGroup.meetings.filter((a) => a.status === "started").length;
+                  const roomInfo = ROOMS.find((r) => r.name === fundGroup.room);
+                  return (
+                    <div key={fundGroup.fund}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10, padding: "10px 14px", background: "rgba(129,140,248,0.04)", borderRadius: 14, border: "1px solid rgba(129,140,248,0.1)" }}>
+                        <div>
+                          <h3 style={{ fontSize: 16, fontWeight: 800, color: "#fff", marginBottom: 2 }}>{fundGroup.fund}</h3>
+                          <p style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>
+                            {fundGroup.reps.join(", ")} · 📍 {fundGroup.room}{roomInfo ? ` · ${roomInfo.floor}` : ""}
+                          </p>
+                        </div>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: fundLive > 0 ? "#818cf8" : "rgba(255,255,255,0.25)" }}>
+                          {fundLive}/{fundGroup.meetings.length}
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingLeft: 8 }}>
+                        {fundGroup.meetings.map((a) => (
+                          <InvestorMeetingCard key={a.id} assignment={a} confirmId={confirmId} onStart={handleStart} onCancel={() => setConfirmId(null)} onReset={resetInvestorMeeting} compact />
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </main>
+
+          <nav className="runner-nav" style={{ background: "rgba(13,17,24,0.85)" }}>
+            <button onClick={() => setView("concierge")} className="nav-item">
+              <span style={{ fontSize: 20 }}>🖥️</span>
+              <span style={{ fontSize: 10, fontWeight: 600, marginTop: 2 }}>iPad View</span>
+            </button>
+            <div className="nav-item nav-item-active" style={{ color: "#818cf8" }}>
+              <span style={{ fontSize: 20 }}>💼</span>
+              <span style={{ fontSize: 10, fontWeight: 700, marginTop: 2, color: "#818cf8" }}>My Funds</span>
+            </div>
+            <button onClick={openSearch} className="nav-item">
+              <span style={{ fontSize: 20 }}>🔍</span>
+              <span style={{ fontSize: 10, fontWeight: 600, marginTop: 2 }}>Lookup</span>
+            </button>
+          </nav>
+        </div>
+      );
+    }
+
+    function InvestorMeetingCard({ assignment: a, confirmId, onStart, onCancel, onReset, compact }) {
+      const isStarted = a.status === "started";
+      const isConfirming = confirmId === a.id;
+      const roomInfo = ROOMS.find((r) => r.name === a.investorRoom);
+      const slotShort = a.timeSlot.split(" – ")[0];
+
+      if (compact) {
+        return (
+          <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", background: isStarted ? "rgba(129,140,248,0.06)" : "rgba(255,255,255,0.02)", borderRadius: 14, border: `1px solid ${isStarted ? "rgba(129,140,248,0.2)" : "rgba(255,255,255,0.04)"}`, transition: "all 0.2s" }}>
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: isStarted ? "rgba(129,140,248,0.1)" : "rgba(255,255,255,0.04)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 800, color: isStarted ? "#818cf8" : "rgba(255,255,255,0.4)", flexShrink: 0, border: `1px solid ${isStarted ? "rgba(129,140,248,0.15)" : "rgba(255,255,255,0.05)"}` }}>
+              {a.founderCompany[0]}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>{a.founderCompany}</p>
+              <p style={{ fontSize: 11, color: "rgba(255,255,255,0.3)" }}>{slotShort} · Founder visits</p>
+            </div>
+            {isStarted ? (
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#818cf8", animation: "pulse-glow 2s infinite" }} />
+                <span style={{ fontSize: 11, fontWeight: 700, color: "#818cf8" }}>LIVE</span>
+                <button onClick={() => onReset(a.id)} style={{ background: "none", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 6, padding: "3px 8px", fontSize: 10, color: "rgba(255,255,255,0.25)", cursor: "pointer", fontFamily: "Manrope, sans-serif", marginLeft: 4 }}>Undo</button>
+              </div>
+            ) : isConfirming ? (
+              <div style={{ display: "flex", gap: 4 }}>
+                <button onClick={() => onStart(a.id)} style={{ background: "#818cf8", border: "none", borderRadius: 8, padding: "6px 12px", fontSize: 11, fontWeight: 800, color: "#050505", cursor: "pointer", fontFamily: "Manrope, sans-serif" }}>✓</button>
+                <button onClick={onCancel} style={{ background: "none", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, padding: "6px 10px", fontSize: 11, color: "rgba(255,255,255,0.3)", cursor: "pointer", fontFamily: "Manrope, sans-serif" }}>✕</button>
+              </div>
+            ) : (
+              <button onClick={() => onStart(a.id)} className="inv-start-btn-sm">Start</button>
+            )}
+          </div>
+        );
+      }
+
+      return (
+        <article style={{ position: "relative", borderRadius: 20, padding: 18, overflow: "hidden", background: isStarted ? "rgba(129,140,248,0.06)" : "rgba(13,17,24,0.8)", border: `1px solid ${isStarted ? "rgba(129,140,248,0.2)" : "rgba(255,255,255,0.05)"}`, animation: "fadeUp 0.35s ease", transition: "all 0.2s" }}>
+          {isStarted && <div style={{ position: "absolute", inset: -2, background: "linear-gradient(135deg, rgba(129,140,248,0.12), rgba(129,140,248,0.03))", borderRadius: 22, filter: "blur(4px)", pointerEvents: "none" }} />}
+          <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, background: isStarted ? "rgba(129,140,248,0.12)" : "rgba(255,255,255,0.04)", color: isStarted ? "#818cf8" : "rgba(255,255,255,0.35)", border: `1px solid ${isStarted ? "rgba(129,140,248,0.2)" : "rgba(255,255,255,0.1)"}`, padding: "4px 12px", borderRadius: 999, fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                {isStarted && <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#818cf8", animation: "pulse-glow 2s infinite" }} />}
+                <span>{isStarted ? "LIVE" : "PENDING"}</span>
+              </div>
+              <span style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", fontWeight: 500 }}>{a.timeSlot}</span>
+            </div>
+
+            {/* Fund + Room (investor stays here) */}
+            <div style={{ padding: "10px 14px", background: "rgba(129,140,248,0.04)", borderRadius: 12, border: "1px solid rgba(129,140,248,0.08)" }}>
+              <p style={{ fontSize: 10, color: "rgba(129,140,248,0.6)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 2 }}>LP Fund · Their Room</p>
+              <p style={{ fontSize: 16, color: "#fff", fontWeight: 700 }}>{a.fund}</p>
+              <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 4, color: isStarted ? "#818cf8" : "rgba(255,255,255,0.4)" }}>
+                <span style={{ fontSize: 12 }}>📍</span>
+                <span style={{ fontSize: 13, fontWeight: 700 }}>{a.investorRoom}</span>
+                {roomInfo && <span style={{ fontSize: 10, color: "rgba(255,255,255,0.2)", marginLeft: 4 }}>· {roomInfo.floor}</span>}
+              </div>
+              <p style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", marginTop: 4 }}>{a.reps.join(", ")}</p>
+            </div>
+
+            {/* Founder coming to visit */}
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ width: 42, height: 42, borderRadius: 12, background: "rgba(255,255,255,0.04)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 800, color: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.05)", flexShrink: 0 }}>
+                {a.founderCompany[0]}
+              </div>
+              <div>
+                <p style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em" }}>Founder Visiting</p>
+                <p style={{ fontSize: 16, color: "#fff", fontWeight: 700 }}>{a.founderCompany}</p>
+              </div>
+            </div>
+
+            {/* Action */}
+            {!isStarted && (
+              isConfirming ? (
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button onClick={() => onStart(a.id)} className="inv-confirm-yes">✓ Founder Arrived</button>
+                  <button onClick={onCancel} className="btn-confirm-no">Cancel</button>
+                </div>
+              ) : (
+                <button onClick={() => onStart(a.id)} className="inv-start-btn">💼 Founder Arrived — Start Meeting</button>
+              )
+            )}
+            {isStarted && (
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: 12, background: "rgba(129,140,248,0.06)", borderRadius: 999, border: "1px solid rgba(129,140,248,0.15)" }}>
+                  <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#818cf8", animation: "pulse-glow 2s infinite" }} />
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "#818cf8" }}>In Progress</span>
+                </div>
+                <button onClick={() => onReset(a.id)} style={{ background: "none", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 99, padding: "8px 14px", fontSize: 11, color: "rgba(255,255,255,0.3)", cursor: "pointer", fontFamily: "Manrope, sans-serif", fontWeight: 600 }}>Undo</button>
+              </div>
+            )}
+          </div>
+        </article>
+      );
+    }
+
+    // ─── Search / Lookup Overlay ─────────────────────────────────────────────────
+    function SearchOverlay() {
+      const { meetings, closeSearch, startMeeting, resetMeeting } = useApp();
+      const [query, setQuery] = useState("");
+      const [scope, setScope] = useState("all"); // all | founder | investor | room
+      const [confirmId, setConfirmId] = useState(null);
+      const inputRef = useCallback((node) => { if (node) setTimeout(() => node.focus(), 100); }, []);
+
+      // Build unique entities for quick-tap suggestions
+      const entities = useMemo(() => {
+        const founders = [...new Set(meetings.map((m) => m.founder.split(" / ")[1] || m.founder))];
+        const investors = [...new Set(meetings.map((m) => m.investor))];
+        const rooms = [...new Set(meetings.map((m) => m.room))];
+        return { founders, investors, rooms };
+      }, [meetings]);
+
+      const results = useMemo(() => {
+        if (!query.trim()) return [];
+        const q = query.toLowerCase();
+        return meetings.filter((m) => {
+          const founderMatch = m.founder.toLowerCase().includes(q);
+          const investorMatch = m.investor.toLowerCase().includes(q);
+          const roomMatch = m.room.toLowerCase().includes(q);
+          const runnerMatch = m.runner.toLowerCase().includes(q);
+          if (scope === "founder") return founderMatch;
+          if (scope === "investor") return investorMatch;
+          if (scope === "room") return roomMatch;
+          return founderMatch || investorMatch || roomMatch || runnerMatch;
+        });
+      }, [meetings, query, scope]);
+
+      // Group results by match type for display
+      const grouped = useMemo(() => {
+        if (!query.trim()) return null;
+        const q = query.toLowerCase();
+        const byFounder = {};
+        const byInvestor = {};
+        const byRoom = {};
+
+        results.forEach((m) => {
+          const company = m.founder.split(" / ")[1] || m.founder;
+          if (m.founder.toLowerCase().includes(q)) {
+            if (!byFounder[company]) byFounder[company] = [];
+            byFounder[company].push(m);
+          }
+          if (m.investor.toLowerCase().includes(q)) {
+            if (!byInvestor[m.investor]) byInvestor[m.investor] = [];
+            byInvestor[m.investor].push(m);
+          }
+          if (m.room.toLowerCase().includes(q)) {
+            if (!byRoom[m.room]) byRoom[m.room] = [];
+            byRoom[m.room].push(m);
+          }
+        });
+        return { byFounder, byInvestor, byRoom };
+      }, [results, query]);
+
+      const handleStart = (id) => {
+        if (confirmId === id) { startMeeting(id); setConfirmId(null); }
+        else { setConfirmId(id); }
+      };
+
+      const highlightMatch = (text, q) => {
+        if (!q.trim()) return text;
+        const idx = text.toLowerCase().indexOf(q.toLowerCase());
+        if (idx === -1) return text;
+        return (
+          <span>
+            {text.slice(0, idx)}
+            <span style={{ color: "#2ecc70", fontWeight: 800 }}>{text.slice(idx, idx + q.length)}</span>
+            {text.slice(idx + q.length)}
+          </span>
+        );
+      };
+
+      return (
+        <div className="lookup-view">
+          {/* Header */}
+          <header className="lookup-header">
+            <button onClick={closeSearch} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.5)", fontSize: 20, cursor: "pointer", padding: 0, flexShrink: 0 }}>←</button>
+            <div style={{ flex: 1 }}>
+              <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", color: "#2ecc70", textTransform: "uppercase", marginBottom: 4 }}>BluSwan 2026</p>
+              <h2 style={{ fontSize: 22, fontWeight: 800, color: "#fff", letterSpacing: "-0.01em" }}>LP & Founder Lookup</h2>
+            </div>
+          </header>
+
+          {/* Search Input */}
+          <div className="lookup-search-wrap">
+            <div className="lookup-search-bar">
+              <span style={{ fontSize: 18, color: "rgba(255,255,255,0.3)", flexShrink: 0 }}>🔍</span>
+              <input
+                ref={inputRef}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search founder, investor, or room..."
+                className="lookup-input"
+              />
+              {query && (
+                <button onClick={() => setQuery("")} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.3)", fontSize: 16, cursor: "pointer", padding: "0 4px", flexShrink: 0 }}>✕</button>
+              )}
+            </div>
+            {/* Scope filters */}
+            <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
+              {[["all", "All"], ["founder", "Founders"], ["investor", "Investors"], ["room", "Rooms"]].map(([key, label]) => (
+                <button key={key} onClick={() => setScope(key)}
+                  className={scope === key ? "scope-btn-active" : "scope-btn"}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Results or Suggestions */}
+          <main className="lookup-main">
+            {!query.trim() ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+                {/* Quick tap suggestions: Founders */}
+                <div>
+                  <p className="lookup-section-title">🏢 Founders ({entities.founders.length})</p>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                    {entities.founders.map((f) => (
+                      <button key={f} onClick={() => { setQuery(f); setScope("founder"); }} className="suggestion-chip">{f}</button>
+                    ))}
+                  </div>
+                </div>
+                {/* Investors */}
+                <div>
+                  <p className="lookup-section-title">💼 Investors ({entities.investors.length})</p>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                    {entities.investors.map((i) => (
+                      <button key={i} onClick={() => { setQuery(i); setScope("investor"); }} className="suggestion-chip">{i}</button>
+                    ))}
+                  </div>
+                </div>
+                {/* Rooms */}
+                <div>
+                  <p className="lookup-section-title">📍 Rooms ({entities.rooms.length})</p>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                    {entities.rooms.map((r) => {
+                      const ri = ROOMS.find((rm) => rm.name === r);
+                      return (
+                        <button key={r} onClick={() => { setQuery(r); setScope("room"); }} className="suggestion-chip">
+                          {r} {ri ? <span style={{ opacity: 0.5, fontSize: 10, marginLeft: 4 }}>· {ri.floor}</span> : null}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            ) : results.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "60px 0", color: "rgba(255,255,255,0.3)" }}>
+                <p style={{ fontSize: 40, marginBottom: 12 }}>🔍</p>
+                <p style={{ fontSize: 15, fontWeight: 600 }}>No results for "{query}"</p>
+                <p style={{ fontSize: 12, marginTop: 6, color: "rgba(255,255,255,0.2)" }}>Try a founder name, fund, or room number</p>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <p style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", fontWeight: 600, padding: "0 2px" }}>
+                  {results.length} meeting{results.length !== 1 ? "s" : ""} found
+                </p>
+                {results.map((m) => {
+                  const parts = m.founder.split(" / ");
+                  const founderName = parts[0] || "";
+                  const companyName = parts[1] || m.founder;
+                  const isLive = m.status === "started";
+                  const isConfirming = confirmId === m.id;
+                  const roomInfo = ROOMS.find((r) => r.name === m.room);
+                  const slotShort = m.timeSlot.split(" – ")[0];
+
+                  return (
+                    <div key={m.id} className={isLive ? "lookup-card-live" : "lookup-card"}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <div className={isLive ? "c-badge-live" : "c-badge-pending"}>
+                            {isLive && <div className="pulse-dot-tiny" />}
+                            <span>{isLive ? "LIVE" : "PENDING"}</span>
+                          </div>
+                          {m.isPriority && <span style={{ fontSize: 13 }}>⭐</span>}
+                        </div>
+                        <span style={{ fontSize: 11, color: "rgba(255,255,255,0.25)", fontWeight: 600 }}>{slotShort}</span>
+                      </div>
+
+                      <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 10 }}>
+                        <div className="lookup-avatar">{companyName[0]}</div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <h3 style={{ fontSize: 17, fontWeight: 800, color: "#fff", lineHeight: 1.2, marginBottom: 2 }}>{highlightMatch(companyName, query)}</h3>
+                          <p style={{ fontSize: 12, color: "rgba(255,255,255,0.45)" }}>{founderName} · Founder</p>
+                          <p style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", marginTop: 4 }}>Meeting with <span style={{ color: "rgba(255,255,255,0.7)", fontWeight: 600 }}>{highlightMatch(m.investor, query)}</span></p>
+                          <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 4, color: isLive ? "#2ecc70" : "rgba(255,255,255,0.35)" }}>
+                            <span style={{ fontSize: 12 }}>📍</span>
+                            <span style={{ fontSize: 12, fontWeight: 700 }}>{highlightMatch(m.room, query)}</span>
+                            {roomInfo && <span style={{ fontSize: 10, color: "rgba(255,255,255,0.2)", marginLeft: 4 }}>· {roomInfo.floor}</span>}
+                          </div>
+                          <p style={{ fontSize: 10, color: "rgba(255,255,255,0.2)", marginTop: 4 }}>Runner: {m.runner}</p>
+                        </div>
+                      </div>
+
+                      {/* Inline start action */}
+                      {!isLive && (
+                        isConfirming ? (
+                          <div style={{ display: "flex", gap: 6 }}>
+                            <button onClick={() => handleStart(m.id)} className="lookup-start-confirm">✓ Confirm</button>
+                            <button onClick={() => setConfirmId(null)} className="lookup-start-cancel">Cancel</button>
+                          </div>
+                        ) : (
+                          <button onClick={() => handleStart(m.id)} className="lookup-start-btn">▶ Start</button>
+                        )
+                      )}
+                      {isLive && (
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "6px 0", color: "#2ecc70", fontSize: 11, fontWeight: 700 }}>
+                            <div className="pulse-dot-tiny" /> In Progress
+                          </div>
+                          <button onClick={() => resetMeeting(m.id)} style={{ background: "none", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 8, padding: "5px 10px", fontSize: 10, color: "rgba(255,255,255,0.25)", cursor: "pointer", fontFamily: "Manrope, sans-serif" }}>Undo</button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </main>
+
+          {/* Bottom Nav */}
+          <nav className="runner-nav">
+            <button onClick={closeSearch} className="nav-item">
+              <span style={{ fontSize: 20 }}>📋</span>
+              <span style={{ fontSize: 10, fontWeight: 600, marginTop: 2 }}>Meetings</span>
+            </button>
+            <div className="nav-item nav-item-active">
+              <span style={{ fontSize: 20 }}>🔍</span>
+              <span style={{ fontSize: 10, fontWeight: 700, marginTop: 2, color: "#2ecc70" }}>Lookup</span>
+            </div>
+            <button onClick={() => { }} className="nav-item" style={{ opacity: 0.4 }}>
+              <span style={{ fontSize: 20 }}>🏠</span>
+              <span style={{ fontSize: 10, fontWeight: 600, marginTop: 2 }}>Home</span>
+            </button>
+          </nav>
+        </div>
+      );
+    }
+
+    // ─── Concierge View ──────────────────────────────────────────────────────────
+    function ConciergeView() {
+      const { meetings, stats, setView } = useApp();
+      const clock = useClock();
+      const [filter, setFilter] = useState("all");
+      const [slotFilter, setSlotFilter] = useState("all");
+      const [search, setSearch] = useState("");
+
+      const filtered = useMemo(() => {
+        let result = [...meetings];
+        if (slotFilter !== "all") result = result.filter((m) => m.timeSlot === slotFilter);
+        if (filter === "live") result = result.filter((m) => m.status === "started");
+        if (filter === "pending") result = result.filter((m) => m.status === "pending");
+        if (filter === "priority") result = result.filter((m) => m.isPriority);
+        if (search.trim()) {
+          const q = search.toLowerCase();
+          result = result.filter((m) =>
+            m.founder.toLowerCase().includes(q) || m.investor.toLowerCase().includes(q) || m.room.toLowerCase().includes(q) || m.runner.toLowerCase().includes(q)
+          );
+        }
+        return result;
+      }, [meetings, filter, slotFilter, search]);
+
+      const liveCount = meetings.filter((m) => m.status === "started").length;
+      const pendingCount = meetings.filter((m) => m.status === "pending").length;
+      const priorityCount = meetings.filter((m) => m.isPriority).length;
+
+      // Per-slot live counts
+      const slotStats = useMemo(() => {
+        const s = {};
+        TIME_SLOTS.forEach((slot) => {
+          const slotMeetings = meetings.filter((m) => m.timeSlot === slot);
+          s[slot] = { total: slotMeetings.length, live: slotMeetings.filter((m) => m.status === "started").length };
+        });
+        return s;
+      }, [meetings]);
+
+      return (
+        <div className="concierge-view">
+          {/* Header */}
+          <header className="concierge-header">
+            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+              <div className="concierge-icon">🦢</div>
+              <div>
+                <h1 style={{ fontSize: 20, fontWeight: 800, color: "#fff", lineHeight: 1.1, letterSpacing: "-0.02em" }}>BluSwan 2026</h1>
+                <p style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.15em", marginTop: 2 }}>Concierge · LP-AGM Speed Dating</p>
+              </div>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", position: "absolute", left: "50%", transform: "translateX(-50%)", top: 10 }}>
+              <span style={{ fontSize: 34, fontWeight: 800, color: "#fff", letterSpacing: "0.02em", fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>{clock}</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 3 }}>
+                <div className="pulse-dot-sm" />
+                <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", fontWeight: 500 }}>Event Live</span>
+              </div>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+              <div style={{ textAlign: "right" }}>
+                <p style={{ fontSize: 10, fontWeight: 700, color: "#2ecc70", textTransform: "uppercase", letterSpacing: "0.1em" }}>Session Progress</p>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "#fff" }}>{stats.started}/{stats.total}</span>
+                  <div className="progress-track">
+                    <div className="progress-fill" style={{ width: `${stats.pct}%` }} />
+                  </div>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: "#2ecc70" }}>{stats.pct}%</span>
+                </div>
+              </div>
+              <div style={{ width: 1, height: 36, background: "rgba(255,255,255,0.1)" }} />
+              <button onClick={() => setView("splash")} className="mode-switch-btn" title="Switch View">📱</button>
+            </div>
+          </header>
+
+          {/* Slot Tabs + Filters */}
+          <div className="concierge-filters">
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              <button onClick={() => setSlotFilter("all")} className={slotFilter === "all" ? "filter-btn-active" : "filter-btn"} style={{ fontSize: 12 }}>All Slots</button>
+              {TIME_SLOTS.map((slot) => {
+                const ss = slotStats[slot];
+                const short = slot.split(" – ")[0];
+                return (
+                  <button key={slot} onClick={() => setSlotFilter(slot)} className={slotFilter === slot ? "filter-btn-active" : "filter-btn"} style={{ fontSize: 12 }}>
+                    {short}
+                    {ss.live > 0 && <span style={{ marginLeft: 4, color: "#2ecc70", fontWeight: 800 }}>({ss.live})</span>}
+                  </button>
+                );
+              })}
+            </div>
+            <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+              <button onClick={() => setFilter("all")} className={filter === "all" ? "filter-btn-active" : "filter-btn"}>All ({stats.total})</button>
+              <button onClick={() => setFilter("live")} className={filter === "live" ? "filter-btn-live" : "filter-btn"}>
+                {liveCount > 0 && <div className="pulse-dot-tiny" />} Live ({liveCount})
+              </button>
+              <button onClick={() => setFilter("pending")} className={filter === "pending" ? "filter-btn-active" : "filter-btn"}>Pending ({pendingCount})</button>
+              <button onClick={() => setFilter("priority")} className={filter === "priority" ? "filter-btn-priority" : "filter-btn"}>⭐ Top 3 ({priorityCount})</button>
+              <div style={{ marginLeft: "auto", position: "relative" }}>
+                <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search founder, fund, room..." style={{ background: "rgba(19,31,24,0.8)", border: "1px solid rgba(255,255,255,0.08)", color: "#fff", fontSize: 12, borderRadius: 8, padding: "8px 14px 8px 32px", width: 240, outline: "none", fontFamily: "Manrope, sans-serif" }} />
+                <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", fontSize: 14, color: "rgba(255,255,255,0.25)" }}>🔍</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Grid */}
+          <main className="concierge-grid-wrap">
+            <div className="concierge-grid">
+              {filtered.map((m) => (
+                <ConciergeCard key={m.id} meeting={m} />
+              ))}
+            </div>
+            {filtered.length === 0 && (
+              <div style={{ textAlign: "center", padding: "60px 0", color: "rgba(255,255,255,0.3)" }}>
+                <p style={{ fontSize: 36, marginBottom: 12 }}>🔍</p>
+                <p style={{ fontSize: 14 }}>No meetings match your filters</p>
+              </div>
+            )}
+            <div style={{ textAlign: "center", padding: "24px 0", opacity: 0.25 }}>
+              <p style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>
+                {filtered.length} of {stats.total} meetings shown
+              </p>
+            </div>
+          </main>
+
+          <footer className="concierge-footer">
+            <div style={{ display: "flex", gap: 16, fontSize: 10, color: "rgba(255,255,255,0.15)", fontWeight: 500 }}>
+              <span style={{ display: "flex", alignItems: "center", gap: 4 }}><div style={{ width: 5, height: 5, borderRadius: "50%", background: "#2ecc70" }} /> System Online</span>
+              <span>iPad Pro · Concierge Desk</span>
+            </div>
+            <a href="https://docs.google.com/spreadsheets/d/1yU6EOR2vNjKqa7gZ274ZCqcCuhsh7tVm/edit" target="_blank" rel="noopener noreferrer" style={{ fontSize: 10, color: "rgba(255,255,255,0.12)", textDecoration: "none" }}>📊 Source Sheet</a>
+          </footer>
+        </div>
+      );
+    }
+
+    function ConciergeCard({ meeting }) {
+      const isLive = meeting.status === "started";
+      const parts = meeting.founder.split(" / ");
+      const founderName = parts[0] || "";
+      const companyName = parts[1] || meeting.founder;
+      const roomInfo = ROOMS.find((r) => r.name === meeting.room);
+      const slotShort = meeting.timeSlot.split(" – ")[0];
+
+      return (
+        <div className={isLive ? "c-card-live" : "c-card-pending"}>
+          {meeting.isPriority && (
+            <div style={{ position: "absolute", top: 10, right: 12, opacity: isLive ? 1 : 0.5, fontSize: 16 }}>⭐</div>
+          )}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+            <div className={isLive ? "c-badge-live" : "c-badge-pending"}>
+              {isLive && <div className="pulse-dot-tiny" />}
+              <span>{isLive ? "LIVE" : "PENDING"}</span>
+            </div>
+            <span style={{ fontSize: 10, color: "rgba(255,255,255,0.25)", fontWeight: 600 }}>{slotShort}</span>
+          </div>
+          <div style={{ marginBottom: 10 }}>
+            <h3 style={{ fontSize: 17, fontWeight: 800, color: "#fff", lineHeight: 1.2, opacity: isLive ? 1 : 0.8, marginBottom: 1 }}>{companyName}</h3>
+            <p style={{ fontSize: 11, color: isLive ? "rgba(255,255,255,0.35)" : "rgba(255,255,255,0.2)" }}>vs</p>
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: "#fff", lineHeight: 1.2, opacity: isLive ? 0.9 : 0.7, marginTop: 1 }}>{meeting.investor}</h3>
+          </div>
+          <div style={{ marginTop: "auto", display: "flex", alignItems: "center", gap: 8, paddingTop: 10, borderTop: `1px solid ${isLive ? "rgba(46,204,112,0.15)" : "rgba(255,255,255,0.05)"}` }}>
+            <div className="c-card-avatar">{founderName[0]}</div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: isLive ? "#2ecc70" : "rgba(255,255,255,0.25)" }}>Founder</p>
+              <p style={{ fontSize: 12, fontWeight: 600, color: isLive ? "#fff" : "rgba(255,255,255,0.5)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{founderName}</p>
+            </div>
+            <div style={{ textAlign: "right", flexShrink: 0 }}>
+              <p style={{ fontSize: 11, color: isLive ? "rgba(46,204,112,0.7)" : "rgba(255,255,255,0.2)", fontWeight: 600 }}>📍 {meeting.room}</p>
+              <p style={{ fontSize: 9, color: "rgba(255,255,255,0.15)", marginTop: 1 }}>
+                {meeting.runner} {roomInfo ? `· ${roomInfo.floor}` : ""}
+              </p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ─── Global Styles ───────────────────────────────────────────────────────────
+    const GLOBAL_CSS = `
+  @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body, html { font-family: 'Manrope', sans-serif; background: #050505; color: #fff; -webkit-font-smoothing: antialiased; }
+
+  @keyframes pulse-glow { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+  ::-webkit-scrollbar { width: 5px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+
+  .btn-splash-primary { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; padding: 16px; border-radius: 16px; border: none; background: linear-gradient(135deg, #2ecc70 0%, #25a25a 100%); color: #050505; font-family: Manrope, sans-serif; font-size: 16px; font-weight: 800; cursor: pointer; transition: all 0.2s; box-shadow: 0 0 30px rgba(46,204,112,0.25); }
+  .btn-splash-primary:hover { transform: translateY(-2px); box-shadow: 0 0 40px rgba(46,204,112,0.4); }
+  .btn-splash-primary:active { transform: scale(0.97); }
+  .btn-splash-secondary { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; padding: 16px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.03); color: #fff; font-family: Manrope, sans-serif; font-size: 16px; font-weight: 700; cursor: pointer; transition: all 0.2s; }
+  .btn-splash-secondary:hover { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.2); }
+
+  .back-btn { position: absolute; top: 20px; left: 20px; background: none; border: none; color: rgba(255,255,255,0.4); font-family: Manrope, sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; padding: 8px 12px; border-radius: 8px; transition: all 0.15s; }
+  .back-btn:hover { color: #fff; background: rgba(255,255,255,0.05); }
+
+  .runner-pick-btn { display: flex; align-items: center; gap: 14px; width: 100%; padding: 16px 20px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.08); background: rgba(22,46,30,0.6); color: #fff; font-family: Manrope, sans-serif; cursor: pointer; transition: all 0.2s; }
+  .runner-pick-btn:hover { background: rgba(46,204,112,0.08); border-color: rgba(46,204,112,0.2); transform: translateX(4px); }
+  .runner-pick-btn:active { transform: scale(0.98); }
+
+  .runner-avatar { width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg, rgba(46,204,112,0.2), rgba(46,204,112,0.05)); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 800; color: #2ecc70; border: 1px solid rgba(46,204,112,0.15); flex-shrink: 0; }
+  .runner-avatar-sm { width: 38px; height: 38px; border-radius: 50%; background: linear-gradient(135deg, rgba(46,204,112,0.2), rgba(46,204,112,0.05)); display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 800; color: #2ecc70; border: 1px solid rgba(46,204,112,0.15); flex-shrink: 0; }
+
+  .runner-view { min-height: 100vh; background: #102216; display: flex; flex-direction: column; }
+  .runner-header { position: sticky; top: 0; z-index: 20; padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; background: linear-gradient(to bottom, #102216, rgba(16,34,22,0.95)); backdrop-filter: blur(8px); }
+  .runner-main { flex: 1; padding: 0 16px 120px; max-width: 480px; margin: 0 auto; width: 100%; }
+
+  .active-badge { display: flex; align-items: center; gap: 6px; background: rgba(22,46,30,0.5); border: 1px solid rgba(255,255,255,0.05); border-radius: 999px; padding: 6px 14px 6px 10px; }
+  .pulse-dot { width: 8px; height: 8px; border-radius: 50%; background: #2ecc70; animation: pulse-glow 2s infinite; flex-shrink: 0; }
+  .pulse-dot-sm { width: 6px; height: 6px; border-radius: 50%; background: #2ecc70; animation: pulse-glow 2s infinite; flex-shrink: 0; }
+  .pulse-dot-tiny { width: 5px; height: 5px; border-radius: 50%; background: #2ecc70; animation: pulse-glow 1.5s infinite; flex-shrink: 0; }
+
+  .slot-tabs { display: flex; gap: 6px; padding: 8px 16px 16px; overflow-x: auto; position: sticky; top: 70px; z-index: 10; background: rgba(16,34,22,0.95); backdrop-filter: blur(8px); }
+  .slot-tabs::-webkit-scrollbar { display: none; }
+  .slot-tab { padding: 9px 14px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.08); background: rgba(22,46,30,0.6); color: rgba(255,255,255,0.5); font-family: Manrope, sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; white-space: nowrap; display: flex; align-items: center; }
+  .slot-tab:hover { background: rgba(255,255,255,0.03); color: #fff; }
+  .slot-tab-active { padding: 9px 14px; border-radius: 999px; border: 1px solid #2ecc70; background: #2ecc70; color: #102216; font-family: Manrope, sans-serif; font-size: 13px; font-weight: 800; cursor: pointer; box-shadow: 0 0 20px rgba(46,204,112,0.3); transition: all 0.15s; white-space: nowrap; display: flex; align-items: center; }
+
+  .meeting-card-live { position: relative; border-radius: 24px; padding: 20px; overflow: hidden; background: rgba(22,46,30,0.8); border: 1px solid rgba(46,204,112,0.2); animation: fadeUp 0.35s ease; }
+  .meeting-card-pending { position: relative; border-radius: 24px; padding: 20px; overflow: hidden; background: rgba(13,26,17,0.8); border: 1px solid rgba(255,255,255,0.05); animation: fadeUp 0.35s ease; }
+  .card-glow { position: absolute; inset: -2px; background: linear-gradient(135deg, rgba(46,204,112,0.15), rgba(46,204,112,0.04)); border-radius: 26px; filter: blur(4px); pointer-events: none; }
+
+  .status-badge-live { display: flex; align-items: center; gap: 6px; background: rgba(46,204,112,0.12); color: #2ecc70; border: 1px solid rgba(46,204,112,0.2); padding: 4px 12px; border-radius: 999px; font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; box-shadow: 0 0 12px rgba(46,204,112,0.2); }
+  .status-badge-pending { display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.35); border: 1px solid rgba(255,255,255,0.1); padding: 4px 12px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+
+  .founder-monogram { width: 48px; height: 48px; border-radius: 14px; background: rgba(255,255,255,0.04); display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 800; color: rgba(255,255,255,0.6); border: 1px solid rgba(255,255,255,0.06); flex-shrink: 0; }
+
+  .btn-start { width: 100%; padding: 14px; border-radius: 999px; border: none; background: linear-gradient(135deg, #2ecc70, #25a25a); color: #102216; font-family: Manrope, sans-serif; font-size: 15px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s; box-shadow: 0 4px 24px rgba(46,204,112,0.25); }
+  .btn-start:hover { box-shadow: 0 4px 32px rgba(46,204,112,0.4); transform: translateY(-1px); }
+  .btn-start:active { transform: scale(0.97); }
+
+  .btn-confirm-yes { flex: 1; padding: 14px; border-radius: 999px; border: none; background: #2ecc70; color: #050505; font-family: Manrope, sans-serif; font-size: 14px; font-weight: 800; cursor: pointer; transition: all 0.15s; animation: fadeUp 0.2s ease; }
+  .btn-confirm-yes:active { transform: scale(0.96); }
+  .btn-confirm-no { flex: 0.6; padding: 14px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.1); background: transparent; color: rgba(255,255,255,0.5); font-family: Manrope, sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; animation: fadeUp 0.2s ease; }
+
+  .started-banner { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; background: rgba(46,204,112,0.06); border-radius: 999px; border: 1px solid rgba(46,204,112,0.15); }
+
+  .runner-nav { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 360px; background: rgba(16,34,22,0.85); backdrop-filter: blur(12px); border-radius: 16px; border: 1px solid rgba(255,255,255,0.08); padding: 6px; display: flex; z-index: 50; box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
+  .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 8px; border-radius: 12px; background: none; border: none; color: rgba(255,255,255,0.35); cursor: pointer; font-family: Manrope, sans-serif; transition: all 0.15s; }
+  .nav-item:hover { background: rgba(255,255,255,0.04); color: #fff; }
+  .nav-item-active { background: rgba(255,255,255,0.05); color: #2ecc70; }
+
+  /* Concierge */
+  .concierge-view { height: 100vh; display: flex; flex-direction: column; background: #050505; overflow: hidden; }
+  .concierge-header { flex-shrink: 0; background: #0a0a0a; border-bottom: 1px solid rgba(255,255,255,0.08); padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; position: relative; z-index: 10; }
+  .concierge-icon { width: 40px; height: 40px; border-radius: 10px; background: rgba(46,204,112,0.12); display: flex; align-items: center; justify-content: center; font-size: 22px; }
+  .concierge-filters { flex-shrink: 0; padding: 12px 24px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .concierge-grid-wrap { flex: 1; overflow-y: auto; padding: 16px 24px 20px; }
+  .concierge-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+  .concierge-footer { flex-shrink: 0; padding: 8px 24px; background: #0a0a0a; display: flex; justify-content: space-between; align-items: center; }
+
+  .progress-track { width: 100px; height: 6px; background: rgba(255,255,255,0.08); border-radius: 999px; overflow: hidden; }
+  .progress-fill { height: 100%; background: #2ecc70; border-radius: 999px; transition: width 0.6s ease; box-shadow: 0 0 10px rgba(46,204,112,0.6); }
+
+  .mode-switch-btn { width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; font-size: 18px; cursor: pointer; transition: all 0.15s; }
+  .mode-switch-btn:hover { background: rgba(255,255,255,0.1); }
+
+  .filter-btn { display: flex; align-items: center; gap: 5px; padding: 6px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); background: rgba(19,31,24,0.8); color: rgba(255,255,255,0.45); font-family: Manrope, sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+  .filter-btn:hover { background: rgba(255,255,255,0.04); color: #fff; }
+  .filter-btn-active { display: flex; align-items: center; gap: 5px; padding: 6px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.06); color: #fff; font-family: Manrope, sans-serif; font-size: 12px; font-weight: 700; cursor: pointer; }
+  .filter-btn-live { display: flex; align-items: center; gap: 5px; padding: 6px 12px; border-radius: 8px; border: 1px solid rgba(46,204,112,0.3); background: rgba(46,204,112,0.08); color: #2ecc70; font-family: Manrope, sans-serif; font-size: 12px; font-weight: 700; cursor: pointer; box-shadow: 0 0 10px rgba(46,204,112,0.1); }
+  .filter-btn-priority { display: flex; align-items: center; gap: 5px; padding: 6px 12px; border-radius: 8px; border: 1px solid rgba(245,158,11,0.3); background: rgba(245,158,11,0.08); color: #f59e0b; font-family: Manrope, sans-serif; font-size: 12px; font-weight: 700; cursor: pointer; }
+
+  .c-card-live { position: relative; display: flex; flex-direction: column; background: rgba(46,204,112,0.06); border: 1px solid rgba(46,204,112,0.25); border-radius: 14px; padding: 16px; transition: all 0.3s; box-shadow: 0 0 20px rgba(46,204,112,0.08); min-height: 200px; animation: fadeUp 0.3s ease; }
+  .c-card-live:hover { border-color: rgba(46,204,112,0.5); box-shadow: 0 0 30px rgba(46,204,112,0.15); }
+  .c-card-pending { position: relative; display: flex; flex-direction: column; background: #111; border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; padding: 16px; transition: all 0.3s; min-height: 200px; animation: fadeUp 0.3s ease; }
+  .c-card-pending:hover { border-color: rgba(255,255,255,0.15); }
+
+  .c-badge-live { display: flex; align-items: center; gap: 5px; background: rgba(46,204,112,0.15); color: #2ecc70; border: 1px solid rgba(46,204,112,0.2); padding: 3px 10px; border-radius: 999px; font-size: 10px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; box-shadow: 0 0 10px rgba(46,204,112,0.2); animation: pulse-glow 3s infinite; }
+  .c-badge-pending { display: flex; align-items: center; gap: 5px; background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.3); border: 1px solid rgba(255,255,255,0.08); padding: 3px 10px; border-radius: 999px; font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+
+  .c-card-avatar { width: 28px; height: 28px; border-radius: 50%; background: rgba(255,255,255,0.06); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.5); flex-shrink: 0; }
+
+  /* ── Lookup / Search ── */
+  .lookup-view { min-height: 100vh; background: #102216; display: flex; flex-direction: column; }
+  .lookup-header { position: sticky; top: 0; z-index: 20; padding: 20px 20px 12px; display: flex; align-items: flex-start; gap: 12; background: linear-gradient(to bottom, #102216, rgba(16,34,22,0.95)); backdrop-filter: blur(8px); }
+  .lookup-search-wrap { padding: 0 20px 16px; position: sticky; top: 76px; z-index: 10; background: rgba(16,34,22,0.95); backdrop-filter: blur(8px); }
+  .lookup-search-bar { display: flex; align-items: center; gap: 10px; background: rgba(13,26,17,0.9); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 12px 16px; transition: border-color 0.2s; }
+  .lookup-search-bar:focus-within { border-color: rgba(46,204,112,0.4); box-shadow: 0 0 20px rgba(46,204,112,0.06); }
+  .lookup-input { flex: 1; background: none; border: none; outline: none; color: #fff; font-family: Manrope, sans-serif; font-size: 15px; font-weight: 500; }
+  .lookup-input::placeholder { color: rgba(255,255,255,0.25); }
+  .lookup-main { flex: 1; padding: 0 20px 120px; max-width: 520px; margin: 0 auto; width: 100%; overflow-y: auto; }
+  .lookup-section-title { font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.35); text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 10px; }
+  .suggestion-chip { padding: 8px 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.06); background: rgba(13,26,17,0.8); color: rgba(255,255,255,0.6); font-family: Manrope, sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+  .suggestion-chip:hover { background: rgba(46,204,112,0.08); border-color: rgba(46,204,112,0.2); color: #fff; }
+  .suggestion-chip:active { transform: scale(0.96); }
+
+  .scope-btn { padding: 6px 14px; border-radius: 99px; border: 1px solid rgba(255,255,255,0.06); background: rgba(13,26,17,0.6); color: rgba(255,255,255,0.4); font-family: Manrope, sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+  .scope-btn:hover { color: #fff; background: rgba(255,255,255,0.04); }
+  .scope-btn-active { padding: 6px 14px; border-radius: 99px; border: 1px solid rgba(46,204,112,0.3); background: rgba(46,204,112,0.1); color: #2ecc70; font-family: Manrope, sans-serif; font-size: 12px; font-weight: 700; cursor: pointer; }
+
+  .lookup-card { background: rgba(13,26,17,0.8); border: 1px solid rgba(255,255,255,0.05); border-radius: 18px; padding: 16px; animation: fadeUp 0.3s ease; transition: all 0.2s; }
+  .lookup-card:hover { border-color: rgba(255,255,255,0.1); }
+  .lookup-card-live { background: rgba(22,46,30,0.8); border: 1px solid rgba(46,204,112,0.2); border-radius: 18px; padding: 16px; animation: fadeUp 0.3s ease; box-shadow: 0 0 15px rgba(46,204,112,0.06); transition: all 0.2s; }
+  .lookup-card-live:hover { border-color: rgba(46,204,112,0.4); }
+
+  .lookup-avatar { width: 42px; height: 42px; border-radius: 12px; background: rgba(255,255,255,0.04); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 800; color: rgba(255,255,255,0.5); border: 1px solid rgba(255,255,255,0.05); flex-shrink: 0; }
+
+  .lookup-start-btn { width: 100%; padding: 10px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.03); color: rgba(255,255,255,0.5); font-family: Manrope, sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.15s; }
+  .lookup-start-btn:hover { background: rgba(46,204,112,0.1); border-color: rgba(46,204,112,0.2); color: #2ecc70; }
+  .lookup-start-confirm { flex: 1; padding: 10px; border-radius: 12px; border: none; background: #2ecc70; color: #050505; font-family: Manrope, sans-serif; font-size: 13px; font-weight: 800; cursor: pointer; animation: fadeUp 0.15s ease; }
+  .lookup-start-confirm:active { transform: scale(0.97); }
+  .lookup-start-cancel { padding: 10px 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08); background: none; color: rgba(255,255,255,0.4); font-family: Manrope, sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; animation: fadeUp 0.15s ease; }
+
+  /* ── Investor Runner ── */
+  .btn-splash-investor { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; padding: 16px; border-radius: 16px; border: 1px solid rgba(129,140,248,0.25); background: linear-gradient(135deg, rgba(129,140,248,0.12) 0%, rgba(129,140,248,0.04) 100%); color: #c7d2fe; font-family: Manrope, sans-serif; font-size: 16px; font-weight: 700; cursor: pointer; transition: all 0.2s; }
+  .btn-splash-investor:hover { background: linear-gradient(135deg, rgba(129,140,248,0.2) 0%, rgba(129,140,248,0.08) 100%); border-color: rgba(129,140,248,0.4); }
+
+  .investor-avatar { width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg, rgba(129,140,248,0.2), rgba(129,140,248,0.05)); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 800; color: #818cf8; border: 1px solid rgba(129,140,248,0.15); flex-shrink: 0; }
+  .investor-avatar-sm { width: 38px; height: 38px; border-radius: 50%; background: linear-gradient(135deg, rgba(129,140,248,0.2), rgba(129,140,248,0.05)); display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 800; color: #818cf8; border: 1px solid rgba(129,140,248,0.15); flex-shrink: 0; }
+
+  .inv-toggle { padding: 7px 16px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.06); background: rgba(255,255,255,0.02); color: rgba(255,255,255,0.4); font-family: Manrope, sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+  .inv-toggle:hover { color: #fff; }
+  .inv-toggle-active { padding: 7px 16px; border-radius: 10px; border: 1px solid rgba(129,140,248,0.3); background: rgba(129,140,248,0.1); color: #818cf8; font-family: Manrope, sans-serif; font-size: 12px; font-weight: 700; cursor: pointer; }
+
+  .inv-slot { padding: 9px 14px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.06); background: rgba(13,17,24,0.6); color: rgba(255,255,255,0.4); font-family: Manrope, sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; white-space: nowrap; display: flex; align-items: center; }
+  .inv-slot:hover { color: #fff; }
+  .inv-slot-active { padding: 9px 14px; border-radius: 999px; border: 1px solid #818cf8; background: #818cf8; color: #0d1118; font-family: Manrope, sans-serif; font-size: 13px; font-weight: 800; cursor: pointer; box-shadow: 0 0 20px rgba(129,140,248,0.3); transition: all 0.15s; white-space: nowrap; display: flex; align-items: center; }
+
+  .inv-start-btn { width: 100%; padding: 14px; border-radius: 999px; border: none; background: linear-gradient(135deg, #818cf8, #6366f1); color: #0d1118; font-family: Manrope, sans-serif; font-size: 15px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s; box-shadow: 0 4px 24px rgba(129,140,248,0.25); }
+  .inv-start-btn:hover { box-shadow: 0 4px 32px rgba(129,140,248,0.4); transform: translateY(-1px); }
+  .inv-start-btn:active { transform: scale(0.97); }
+  .inv-start-btn-sm { padding: 6px 14px; border-radius: 8px; border: 1px solid rgba(129,140,248,0.2); background: rgba(129,140,248,0.06); color: #818cf8; font-family: Manrope, sans-serif; font-size: 11px; font-weight: 700; cursor: pointer; transition: all 0.15s; }
+  .inv-start-btn-sm:hover { background: rgba(129,140,248,0.15); }
+  .inv-confirm-yes { flex: 1; padding: 14px; border-radius: 999px; border: none; background: #818cf8; color: #050505; font-family: Manrope, sans-serif; font-size: 14px; font-weight: 800; cursor: pointer; transition: all 0.15s; animation: fadeUp 0.2s ease; }
+  .inv-confirm-yes:active { transform: scale(0.96); }
+`;
+
+
+    function App() {
+      return (
+        <AppProvider>
+          <style>{GLOBAL_CSS}</style>
+          <Router />
+        </AppProvider>
+      );
+    }
+
+    function Router() {
+      const { view } = useApp();
+      switch (view) {
+        case "runner-login": return <RunnerLogin />;
+        case "runner": return <RunnerView />;
+        case "investor-runner-login": return <InvestorRunnerLogin />;
+        case "investor-runner": return <InvestorRunnerView />;
+        case "lookup": return <SearchOverlay />;
+        case "concierge": return <ConciergeView />;
+        default: return <SplashScreen />;
+      }
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+
+</html>
