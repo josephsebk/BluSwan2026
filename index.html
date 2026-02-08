@@ -84,6 +84,60 @@
       },
     };
 
+    // ─────────────────────────────────────────────────────────────────────────────
+    // FEATURE FLAGS & ASSETS
+    // ─────────────────────────────────────────────────────────────────────────────
+    const ENABLE_INVESTOR_IMAGES = true; // Set to false to revert UI instantly
+
+    // Mapping Rep Name -> Image File
+    // Based on Investors.docx analysis
+    const INVESTOR_IMAGES = {
+      "Gaurav Jain": "assets/investors/image1.webp",
+      "Shalabh Tandon": "assets/investors/image2.webp",
+      "Treasa Mathew": "assets/investors/image3.webp",
+      "Gordon Chan": "assets/investors/image4.webp",
+      "Ali Abdulhussain": "assets/investors/image5.webp",
+      "Mahmoud Al Khatri": "assets/investors/image6.webp",
+      "Khor Boon How": "assets/investors/image7.webp", // Doc: Boon How Khor
+      "Boon How Khor": "assets/investors/image7.webp",
+      "Sam CHEN": "assets/investors/image8.webp",
+      "Ankit Agarwal": "assets/investors/image9.webp",
+      "George Li": "assets/investors/image10.webp",
+      "Pawan Chaturvedi": "assets/investors/image11.webp",
+      "Devesh Papney": "assets/investors/image12.webp",
+      "Priyanka Thakkar": "assets/investors/image13.webp",
+      "Fiyin Olayisade": "assets/investors/image14.webp",
+      "Anoushka": "assets/investors/image15.webp",
+      "Boris DSouza": "assets/investors/image16.webp",
+      "Balsam Alsaif": "assets/investors/image17.webp",
+      "Raed Twaily": "assets/investors/image18.webp",
+      "Omar Alnammary": "assets/investors/image19.webp",
+      "Abhishek Shukla": "assets/investors/image20.webp",
+      "Kiran": "assets/investors/image21.webp",
+      "Nitin Agarwal": "assets/investors/image22.webp",
+      // New reps from script (placeholders or re-use if possible)
+      "Ashok": null,
+      "Asad": null,
+      "Mandeep": null,
+      "Sandeep": null,
+      "Anand": null,
+      "Ashita": null,
+      "Prashant": null,
+      "Apurv": null,
+      "Vinay": null,
+      "Neeraj": null,
+      "Niraj": null,
+      "Kunaal": null,
+      "Sourav": null,
+      "Vasanth": null
+    };
+
+    const getInvestorImage = (name) => {
+      if (!ENABLE_INVESTOR_IMAGES || !name) return null;
+      // Normalization if needed
+      return INVESTOR_IMAGES[name] || INVESTOR_IMAGES[name.replace("Dr. ", "")] || null;
+    };
+
     const MEETINGS_DATA = [
       { id: 1, runner: "Sumangal", timeSlot: "2:30 PM – 3:00 PM", founder: "IDfy", investor: "Evolvence Equity Partners", room: "FF-Introspect", rep: "Anoushka", status: "pending", isPriority: false },
       { id: 2, runner: "Sumangal", timeSlot: "2:30 PM – 3:00 PM", founder: "TestMu (formerly Lambdatest)", investor: "IFC", room: "GF-Navigate", rep: "Shalabh Tandon", status: "pending", isPriority: false },
@@ -559,7 +613,12 @@
             {/* Investor */}
             <div style={{ padding: "10px 14px", background: "rgba(255,255,255,0.03)", borderRadius: 12, border: "1px solid rgba(255,255,255,0.06)" }}>
               <p style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 2 }}>Investor (LP)</p>
-              <p style={{ fontSize: 15, color: "rgba(255,255,255,0.85)", fontWeight: 600 }}>{meeting.investor}</p>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                {getInvestorImage(repName) && (
+                  <img src={getInvestorImage(repName)} className="investor-avatar-card" alt={repName} />
+                )}
+                <p style={{ fontSize: 15, color: "rgba(255,255,255,0.85)", fontWeight: 600 }}>{meeting.investor}</p>
+              </div>
             </div>
 
             {/* Actions */}
@@ -1065,7 +1124,11 @@
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <h3 style={{ fontSize: 17, fontWeight: 800, color: "#fff", lineHeight: 1.2, marginBottom: 2 }}>{highlightMatch(companyName, query)}</h3>
                           {repName && <p style={{ fontSize: 12, color: "rgba(255,255,255,0.45)" }}>Rep: {repName}</p>}
-                          <p style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", marginTop: 4 }}>Meeting with <span style={{ color: "rgba(255,255,255,0.7)", fontWeight: 600 }}>{highlightMatch(m.investor, query)}</span></p>
+                          <p style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", marginTop: 4, display: "flex", alignItems: "center", gap: 6 }}>
+                            Meeting with
+                            {getInvestorImage(repName) && <img src={getInvestorImage(repName)} style={{ width: 16, height: 16, borderRadius: "50%", objectFit: "cover" }} alt="" />}
+                            <span style={{ color: "rgba(255,255,255,0.7)", fontWeight: 600 }}>{highlightMatch(m.investor, query)}</span>
+                          </p>
                           <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 4, color: isLive ? "#2ecc70" : "rgba(255,255,255,0.35)" }}>
                             <span style={{ fontSize: 12 }}>📍</span>
                             <span style={{ fontSize: 12, fontWeight: 700 }}>{highlightMatch(m.room, query)}</span>
@@ -1426,6 +1489,7 @@
 
   .investor-avatar { width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg, rgba(129,140,248,0.2), rgba(129,140,248,0.05)); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 800; color: #818cf8; border: 1px solid rgba(129,140,248,0.15); flex-shrink: 0; }
   .investor-avatar-sm { width: 38px; height: 38px; border-radius: 50%; background: linear-gradient(135deg, rgba(129,140,248,0.2), rgba(129,140,248,0.05)); display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 800; color: #818cf8; border: 1px solid rgba(129,140,248,0.15); flex-shrink: 0; }
+  .investor-avatar-card { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 1px solid rgba(255,255,255,0.15); flex-shrink: 0; }
 
   .inv-toggle { padding: 7px 16px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.06); background: rgba(255,255,255,0.02); color: rgba(255,255,255,0.4); font-family: Manrope, sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
   .inv-toggle:hover { color: #fff; }
