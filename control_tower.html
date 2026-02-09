@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>BluSwan Control Tower</title>
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦢</text></svg>">
+
+    <!-- Dependencies -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap"
+        rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+
+    <!-- Tailwind Config -->
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#2ECC71",
+                        background: "#050505",
+                        surface: "#0D0D0D",
+                        "surface-highlight": "#161618",
+                        "border-subtle": "#1F1F21",
+                        "slot-free": "#111111",
+                        "booked-card": "#18181B",
+                        "free-orange": "#F39C12",
+                    },
+                    fontFamily: {
+                        sans: ['"SF Pro Display"', '"SF Pro Text"', "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", "sans-serif"],
+                    },
+                    boxShadow: {
+                        'glow': '0 0 12px rgba(46, 204, 113, 0.25)',
+                        'glow-border': '0 0 0 1px rgba(46, 204, 113, 0.4), 0 0 10px rgba(46, 204, 113, 0.2)',
+                        'glow-orange': '0 0 0 1px rgba(243, 156, 18, 0.4), 0 0 10px rgba(243, 156, 18, 0.2)',
+                    }
+                },
+            },
+        };
+    </script>
+    <style type="text/tailwindcss">
+        @layer base {
+            body {
+                background-color: #050505;
+                color: #FFF;
+                -webkit-font-smoothing: antialiased;
+                min-height: max(884px, 100dvh);
+            }
+        }
+        .hide-scroll::-webkit-scrollbar { display: none }
+        .hide-scroll { -ms-overflow-style: none; scrollbar-width: none }
+        .free-slot-glow {
+            background: rgba(243, 156, 18, 0.08);
+            border: 1px solid rgba(243, 156, 18, 0.4);
+            box-shadow: 0 0 12px rgba(243, 156, 18, 0.15);
+        }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #050505 }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #2C2C2E; border-radius: 2px }
+        .glass-panel {
+            background: rgba(5, 5, 5, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05)
+        }
+        .sticky-column {
+            position: sticky;
+            left: 0;
+            z-index: 30;
+            background-color: #0D0D0D;
+        }
+    </style>
+</head>
+
+<body class="bg-background text-white font-sans flex flex-col min-h-screen">
+    <div id="root" class="flex flex-col min-h-screen"></div>
+
+    <script type="text/babel" data-type="module">
+        const { useState, useEffect, useMemo, useRef } = React;
+        const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyB5b-raK5TB8jae94FinurfCCdMVMIiJquzkTTYnejocMLPj_GpnLl4Idor8-ccQ0Wsg/exec";
+
+        function App() {
+            const [meetings, setMeetings] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [view, setView] = useState('founders'); // founders | investors
+            const [lastUpdated, setLastUpdated] = useState(new Date());
+
+            // Sync scrolling
+            const mainScrollRef = useRef(null);
+            const headerScrollRef = useRef(null);
+
+            const handleMainScroll = () => {
+                if (mainScrollRef.current && headerScrollRef.current) {
+                    headerScrollRef.current.scrollLeft = mainScrollRef.current.scrollLeft;
+                }
+            };
+
+            const fetchData = () => {
+                fetch(`${APPS_SCRIPT_URL}?action=getMeetings`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.meetings) setMeetings(data.meetings);
+                        setLastUpdated(new Date());
+                        setLoading(false);
+                    })
+                    .catch(err => console.error(err));
+            };
+
+            // Initial Load & Polling
+            useEffect(() => {
+                fetchData();
+                const interval = setInterval(fetchData, 30000); // 30s refresh
+                return () => clearInterval(interval);
+            }, []);
+
+            // 1. Get Unique Time Slots (Sorted)
+            const timeSlots = useMemo(() => {
+                const slots = new Set(meetings.map(m => m.timeSlot).filter(Boolean));
+                return Array.from(slots).sort((a, b) => {
+                    const getHour = (s) => parseInt(s.split(':')[0]);
+                    const getAmPm = (s) => s.includes('PM') ? 1 : 0;
+                    if (getAmPm(a) !== getAmPm(b)) return getAmPm(a) - getAmPm(b);
+                    return a.localeCompare(b);
+                });
+            }, [meetings]);
+
+            // 2. Get Entities (Rows)
+            const entities = useMemo(() => {
+                const set = new Set();
+                meetings.forEach(m => {
+                    const entity = view === 'founders' ? m.company : m.investor;
+                    if (entity) set.add(entity);
+                });
+                return Array.from(set).sort();
+            }, [meetings, view]);
+
+            // 3. Build lookup map
+            const lookup = useMemo(() => {
+                const map = {};
+                meetings.forEach(m => {
+                    const entity = view === 'founders' ? m.company : m.investor;
+                    if (entity && m.timeSlot) {
+                        map[`${entity}|${m.timeSlot}`] = m;
+                    }
+                });
+                return map;
+            }, [meetings, view]);
+
+            // Calculate Stats
+            const stats = useMemo(() => {
+                const total = entities.length * timeSlots.length;
+                const occupied = Object.keys(lookup).length;
+                const free = total > 0 ? total - occupied : 0;
+                const active = entities.length;
+
+                // Avoid division by zero
+                const freePct = total > 0 ? (free / total) * 100 : 0;
+                const occupiedPct = total > 0 ? (occupied / total) * 100 : 0;
+
+                // Calculate Progress
+                // Calculate Progress
+                const progress = (() => {
+                    const now = new Date();
+                    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+                    const parseTime = (t) => {
+                        const [time, modifier] = t.trim().split(/\s+/);
+                        let [hours, minutes] = time.split(':');
+                        if (hours === '12') hours = '00';
+                        if (modifier === 'PM' && hours !== '12') hours = parseInt(hours, 10) + 12;
+                        return parseInt(hours, 10) * 60 + parseInt(minutes, 10);
+                    };
+
+                    // Find current slot
+                    const currentSlot = timeSlots.find(slot => {
+                        try {
+                            const parts = slot.split('–'); // En dash or hyphen check?
+                            // Data usually has "2:00 PM – 2:30 PM" (en dash) or "-"
+                            // Let's try splitting by regex to be safe
+                            const timing = slot.split(/[–-]/);
+                            if (timing.length < 2) return false;
+
+                            const s = parseTime(timing[0]);
+                            const e = parseTime(timing[1]);
+
+                            return currentMinutes >= s && currentMinutes < e;
+                        } catch (e) { return false; }
+                    });
+
+                    if (!currentSlot) return 0;
+
+                    // Filter meetings in this slot
+                    const slotMeetings = meetings.filter(m => m.timeSlot === currentSlot);
+                    const totalInSlot = slotMeetings.length;
+
+                    if (totalInSlot === 0) return 0;
+
+                    const startedInSlot = slotMeetings.filter(m => m.status === 'started').length;
+
+                    return Math.round((startedInSlot / totalInSlot) * 100);
+                })();
+
+                return { total, occupied, free, active, freePct, occupiedPct, progress };
+            }, [entities, timeSlots, lookup, lastUpdated]);
+
+            if (loading) {
+                return (
+                    <div className="flex items-center justify-center min-h-screen">
+                        <div className="text-center">
+                            <span className="w-4 h-4 rounded-full bg-primary animate-pulse inline-block mb-4 shadow-[0_0_10px_#2ECC71]"></span>
+                            <h2 className="text-primary font-bold tracking-widest text-sm uppercase">Initializing Control Tower...</h2>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="flex flex-col min-h-screen">
+                    <header className="sticky top-0 z-50 glass-panel px-6 py-5">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                                <div className="w-10 h-10 rounded-full bg-surface-highlight flex items-center justify-center border border-white/10 overflow-hidden">
+                                    <span className="text-2xl">🦢</span>
+                                </div>
+                                <div>
+                                    <h1 className="text-base font-bold tracking-tight text-white leading-tight uppercase">CONTROL TOWER</h1>
+                                    <p className="text-[11px] text-gray-500 font-bold uppercase tracking-[0.1em]">BluSwan Matrix</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2.5 bg-primary/10 px-4 py-2 rounded-full border border-primary/30">
+                                <span className="w-2 h-2 bg-primary rounded-full animate-pulse shadow-[0_0_10px_#2ECC71]"></span>
+                                <span className="text-xs font-black text-primary tracking-widest uppercase">LIVE • {lastUpdated.toLocaleTimeString()}</span>
+                            </div>
+                        </div>
+                    </header>
+
+                    <main className="flex-grow p-6 space-y-8 max-w-[1920px] mx-auto w-full">
+                        {/* Stats Cards */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="bg-surface rounded-2xl p-6 border border-border-subtle relative overflow-hidden flex flex-col justify-between h-36">
+                                <div className="flex justify-between items-start">
+                                    <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Open Slots</span>
+                                    <span className="material-symbols-outlined text-free-orange text-xl">grid_view</span>
+                                </div>
+                                <div>
+                                    <h2 className="text-4xl font-bold text-white tracking-tighter">{stats.free}</h2>
+                                    <div className="w-full h-1 bg-white/5 rounded-full mt-4">
+                                        <div className="h-full bg-free-orange rounded-full shadow-[0_0_8px_rgba(243,156,18,0.6)]" style={{ width: `${stats.freePct}%` }}></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="bg-surface rounded-2xl p-6 border border-border-subtle relative overflow-hidden flex flex-col justify-between h-36">
+                                <div className="flex justify-between items-start">
+                                    <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Booked Meetings</span>
+                                    <span className="material-symbols-outlined text-gray-600 text-xl">check_circle</span>
+                                </div>
+                                <div>
+                                    <h2 className="text-4xl font-bold text-white tracking-tighter">{stats.occupied}</h2>
+                                    <div className="w-full h-1 bg-white/5 rounded-full mt-4">
+                                        <div className="h-full bg-white rounded-full opacity-90" style={{ width: `${stats.occupiedPct}%` }}></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="bg-surface rounded-2xl p-6 border border-border-subtle relative overflow-hidden flex flex-col justify-between h-36">
+                                <div className="flex justify-between items-start">
+                                    <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Session Progress</span>
+                                    <span className="material-symbols-outlined text-primary text-xl">avg_pace</span>
+                                </div>
+                                <div>
+                                    <h2 className="text-4xl font-bold text-white tracking-tighter">{stats.progress}%</h2>
+                                    <div className="w-full h-1 bg-white/5 rounded-full mt-4">
+                                        <div className="h-full bg-primary rounded-full shadow-[0_0_8px_rgba(46,204,113,0.6)]" style={{ width: `${stats.progress}%` }}></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Controls */}
+                        <div className="flex items-center justify-between">
+                            <div className="flex space-x-1.5 bg-surface-highlight p-1 rounded-xl border border-white/5">
+                                <button
+                                    onClick={() => setView('founders')}
+                                    className={`px-5 py-2 rounded-lg text-[13px] font-bold transition-all ${view === 'founders' ? 'bg-white/10 text-white shadow-sm' : 'text-gray-500 hover:text-gray-300'}`}>
+                                    By Founder
+                                </button>
+                                <button
+                                    onClick={() => setView('investors')}
+                                    className={`px-5 py-2 rounded-lg text-[13px] font-bold transition-all ${view === 'investors' ? 'bg-white/10 text-white shadow-sm' : 'text-gray-500 hover:text-gray-300'}`}>
+                                    By Investor
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Grid */}
+                        <div className="relative bg-surface rounded-2xl border border-border-subtle flex flex-col overflow-hidden shadow-2xl">
+                            {/* Sticky Header Row */}
+                            <div className="flex border-b border-border-subtle bg-surface-highlight/80 z-20">
+                                <div className="w-48 flex-shrink-0 p-4 text-[11px] font-bold text-gray-500 uppercase tracking-widest sticky-column border-r border-border-subtle !bg-[#161618]">
+                                    Entity
+                                </div>
+                                <div
+                                    className="flex overflow-hidden flex-grow divide-x divide-border-subtle"
+                                    ref={headerScrollRef}
+                                >
+                                    {timeSlots.map(slot => (
+                                        <div key={slot} className="w-48 flex-shrink-0 py-4 px-2 text-[11px] font-bold text-gray-500 uppercase tracking-widest text-center">
+                                            {slot.split('–')[0]}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Scrollable Body */}
+                            <div
+                                className="overflow-y-auto overflow-x-auto custom-scrollbar max-h-[600px]"
+                                ref={mainScrollRef}
+                                onScroll={handleMainScroll}
+                            >
+                                {entities.map(entity => (
+                                    <div key={entity} className="flex border-b border-border-subtle hover:bg-white/[0.02] transition-colors min-w-fit">
+                                        <div className="w-48 flex-shrink-0 p-4 text-sm font-bold text-white border-r border-border-subtle sticky-column shadow-[4px_0_12px_rgba(0,0,0,0.4)] flex items-center bg-[#0D0D0D]">
+                                            <span className="truncate">{entity}</span>
+                                        </div>
+                                        <div className="flex flex-grow divide-x divide-border-subtle">
+                                            {timeSlots.map(slot => {
+                                                const meeting = lookup[`${entity}|${slot}`];
+                                                const isLive = meeting?.status === 'started';
+
+                                                if (meeting) {
+                                                    if (isLive) {
+                                                        return (
+                                                            <div key={slot} className="w-48 flex-shrink-0 p-2">
+                                                                <div className="h-20 w-full bg-[#0A1810] rounded-xl border border-primary/40 shadow-glow-border p-4 flex flex-col justify-center relative overflow-hidden">
+                                                                    <div className="absolute top-2 right-2 flex items-center space-x-1.5">
+                                                                        <div className="w-2 h-2 rounded-full bg-primary animate-pulse shadow-[0_0_5px_#2ECC71]"></div>
+                                                                    </div>
+                                                                    <span className="text-[13px] font-bold text-white truncate pr-4" title={view === 'founders' ? meeting.investor : meeting.company}>
+                                                                        {view === 'founders' ? meeting.investor : meeting.company}
+                                                                    </span>
+                                                                    <div className="flex items-center gap-1.5 mt-1">
+                                                                        <span className="text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded font-black tracking-widest">LIVE</span>
+                                                                        <span className="text-[11px] text-gray-400 truncate">{meeting.room}</span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    } else {
+                                                        return (
+                                                            <div key={slot} className="w-48 flex-shrink-0 p-2">
+                                                                <div className="h-20 w-full bg-booked-card rounded-xl border border-white/5 p-4 flex flex-col justify-center">
+                                                                    <span className="text-[13px] font-bold text-white truncate" title={view === 'founders' ? meeting.investor : meeting.company}>
+                                                                        {view === 'founders' ? meeting.investor : meeting.company}
+                                                                    </span>
+                                                                    <span className="text-[11px] text-gray-500 mt-1 font-medium tracking-wide truncate">{meeting.room}</span>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    }
+                                                } else {
+                                                    return (
+                                                        <div key={slot} className="w-48 flex-shrink-0 p-2">
+                                                            <div className="h-20 w-full free-slot-glow rounded-xl flex items-center justify-center cursor-default group hover:bg-free-orange/15 transition-all">
+                                                                <span className="text-[12px] font-black text-free-orange tracking-[0.25em] group-hover:scale-105 transition-transform">FREE</span>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                }
+                                            })}
+                                        </div>
+                                    </div>
+                                ))}
+                                {entities.length === 0 && (
+                                    <div className="p-10 text-center text-gray-500 uppercase tracking-widest text-sm">No data found</div>
+                                )}
+                            </div>
+                        </div>
+                    </main>
+
+                    <footer className="bg-surface border-t border-border-subtle py-5 mt-auto">
+                        <div className="flex items-center justify-center gap-12 text-[11px] font-bold uppercase tracking-[0.15em] text-gray-500">
+                            <div className="flex items-center gap-3">
+                                <div className="w-4 h-4 rounded-md free-slot-glow border-none"></div>
+                                <span className="text-free-orange font-black">Free</span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <div className="w-4 h-4 rounded-md bg-booked-card border border-white/10"></div>
+                                <span>Booked</span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <div className="relative w-3 h-3">
+                                    <span className="absolute w-full h-full bg-primary rounded-full opacity-60 animate-ping"></span>
+                                    <span className="relative block w-3 h-3 bg-primary rounded-full shadow-[0_0_10px_#2ECC71]"></span>
+                                </div>
+                                <span className="text-primary">Live</span>
+                            </div>
+                        </div>
+                    </footer>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById("root"));
+        root.render(<App />);
+    </script>
+</body>
+
+</html>

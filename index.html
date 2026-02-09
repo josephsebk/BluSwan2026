@@ -30,6 +30,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"
     crossorigin></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js" crossorigin></script>
+  <script src="assets/investor_images.js"></script>
 
   <script type="text/babel" data-type="module">
     const { useState, useEffect, useCallback, createContext, useContext, useMemo, useRef } = React;
@@ -90,49 +91,14 @@
     const ENABLE_INVESTOR_IMAGES = true; // Set to false to revert UI instantly
 
     // Mapping Rep Name -> Image File
-    // Verified via debug_images.html
-    const INVESTOR_IMAGES = {
-      // Confirmed Mappings
-      "Gaurav Jain": "assets/investors/image1.webp",
-      "Shalabh Tandon": "assets/investors/image2.webp",
-      "Treasa Mathew": "assets/investors/image3.webp",
-      "Gordon Chan": "assets/investors/image4.webp",
-      "Ali Abdulhussain": "assets/investors/image5.webp",
-      "Mahmoud Al Khatri": "assets/investors/image6.webp",
-      "Khor Boon How": "assets/investors/image7.webp",
-      "Boon How Khor": "assets/investors/image7.webp",
-      "Sam CHEN": "assets/investors/image8.webp",
-      "Ankit Agarwal": "assets/investors/image9.webp",
-      "George Li": "assets/investors/image10.webp",
-      "Pawan Chaturvedi": "assets/investors/image11.webp",
-      "Devesh Papney": "assets/investors/image12.webp",
-      "Priyanka Thakkar": "assets/investors/image13.webp",
-      "Fiyin Olayisade": "assets/investors/image14.webp",
-      "Anoushka": "assets/investors/image15.webp",
-      "Boris DSouza": "assets/investors/image16.webp",
-      "Balsam Alsaif": "assets/investors/image17.webp",
-      "Raed Twaily": "assets/investors/image18.webp",
-      "Omar Alnammary": "assets/investors/image19.webp",
-      "Abhishek Shukla": "assets/investors/image20.webp",
-      "Kiran": "assets/investors/image21.webp",
-      "Nitin Agarwal": "assets/investors/image22.webp",
+    // Loaded from assets/investor_images.js
+    // If the file is missing or blocked, INVESTOR_IMAGES might be undefined, handle gracefully.
 
-      // Unmapped / No Image Available in Doc
-      "Ashok": null,
-      "Asad": null,
-      "Mandeep": null,
-      "Sandeep": null,
-      "Anand": null,
-      "Ashita": null,
-      "Prashant": null,
-      "Apurv": null,
-      "Vinay": null,
-      "Neeraj": null,
-      "Niraj": null,
-      "Kunaal": null,
-      "Sourav": null,
-      "Vasanth": null
-    };
+    // Fallback if script fails to load
+    if (typeof INVESTOR_IMAGES === 'undefined') {
+      var INVESTOR_IMAGES = {};
+      console.warn("investor_images.js not loaded or undefined.");
+    }
 
     const getInvestorImage = (name) => {
       if (!ENABLE_INVESTOR_IMAGES || !name) return null;

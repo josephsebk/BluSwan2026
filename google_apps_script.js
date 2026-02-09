@@ -100,7 +100,7 @@ function getMeetings() {
 
     var colId = findCol(['id', '#']);
     var colTimeSlot = findCol(['time', 'slot']);
-    var colFund = findCol(['fund', 'investor']);
+    var colFund = 3; // Force Column D for Investor Name as requested
 
     // Force Column F (index 5) for Rep as requested by user.
     // Dynamic header matching was unreliable (e.g. matching "Investor Rep" in Col D).
