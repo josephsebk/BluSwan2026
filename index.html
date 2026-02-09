@@ -199,12 +199,575 @@
     ];
 
     // Investor Runner assignments — parsed from "Investor View" sheet
-    // These are the LP-side view: investor runners escort fund delegations to their fixed room,
-    // and founders rotate in to meet them each slot.
-    // Investor Runner assignments — parsed from "Investor View" sheet
-    // These are the LP-side view.
-    // NOTE: Cleared as new sheet data does not contain this information.
-    const INVESTOR_ASSIGNMENTS = [];
+    // NOTE: Populated from "BluSwan final.xlsx"
+    const INVESTOR_ASSIGNMENTS = [
+      {
+        "id": 101,
+        "investorRunner": "None",
+        "fund": "Eight Roads",
+        "reps": [
+          "Diwakar Anand"
+        ],
+        "investorRoom": "None",
+        "timeSlot": "10:00-10:35",
+        "founderCompany": "Clientell"
+      },
+      {
+        "id": 102,
+        "investorRunner": "None",
+        "fund": "Prosus",
+        "reps": [
+          "Soumya Chauhan"
+        ],
+        "investorRoom": "None",
+        "timeSlot": "10:00-10:35",
+        "founderCompany": "Futwork"
+      },
+      {
+        "id": 103,
+        "investorRunner": "None",
+        "fund": "Creaegis",
+        "reps": [
+          "Amit Ranade"
+        ],
+        "investorRoom": "None",
+        "timeSlot": "10:00-10:35",
+        "founderCompany": "Handpickd"
+      },
+      {
+        "id": 104,
+        "investorRunner": "None",
+        "fund": "ICICI Venture",
+        "reps": [
+          "Shashwat Madan"
+        ],
+        "investorRoom": "None",
+        "timeSlot": "10:00-10:35",
+        "founderCompany": "iDo Devices"
+      },
+      {
+        "id": 105,
+        "investorRunner": "None",
+        "fund": "BeeNext",
+        "reps": [
+          "Hero Choudhary",
+          "Priyank Mahajan"
+        ],
+        "investorRoom": "None",
+        "timeSlot": "10:00-10:35",
+        "founderCompany": "Wiffy"
+      },
+      {
+        "id": 106,
+        "investorRunner": "None",
+        "fund": "Eight Roads",
+        "reps": [
+          "Diwakar Anand"
+        ],
+        "investorRoom": "None",
+        "timeSlot": "10:45-11:20",
+        "founderCompany": "FOXO"
+      },
+      {
+        "id": 107,
+        "investorRunner": "None",
+        "fund": "Chiratae Ventures",
+        "reps": [
+          "Kinshuk Soperna"
+        ],
+        "investorRoom": "None",
+        "timeSlot": "10:45-11:20",
+        "founderCompany": "Futwork"
+      },
+      {
+        "id": 108,
+        "investorRunner": "None",
+        "fund": "Creaegis",
+        "reps": [
+          "Amit Ranade"
+        ],
+        "investorRoom": "None",
+        "timeSlot": "10:45-11:20",
+        "founderCompany": "Handpickd"
+      },
+      {
+        "id": 109,
+        "investorRunner": "None",
+        "fund": "360 One",
+        "reps": [
+          "Tanmay Parasramka"
+        ],
+        "investorRoom": "None",
+        "timeSlot": "10:45-11:20",
+        "founderCompany": "Lucira"
+      },
+      {
+        "id": 110,
+        "investorRunner": "None",
+        "fund": "Sorin Investments",
+        "reps": [
+          "Alok Anand Patra"
+        ],
+        "investorRoom": "None",
+        "timeSlot": "10:45-11:20",
+        "founderCompany": "Nivasa"
+      },
+      {
+        "id": 111,
+        "investorRunner": "None",
+        "fund": "HealthKois",
+        "reps": [
+          "Nilay Shah"
+        ],
+        "investorRoom": "None",
+        "timeSlot": "11:30-12:05",
+        "founderCompany": "Clientell"
+      },
+      {
+        "id": 112,
+        "investorRunner": "None",
+        "fund": "B Capital",
+        "reps": [
+          "Deepanshu Pattanayak",
+          "Akash Khandelwal",
+          "Karan Mohla"
+        ],
+        "investorRoom": "None",
+        "timeSlot": "11:30-12:05",
+        "founderCompany": "FOXO"
+      },
+      {
+        "id": 113,
+        "investorRunner": "None",
+        "fund": "Aavishkaar Capital",
+        "reps": [
+          "Sanchayan Chakraborty",
+          "Kushal Lathia"
+        ],
+        "investorRoom": "None",
+        "timeSlot": "11:30-12:05",
+        "founderCompany": "Futwork"
+      },
+      {
+        "id": 114,
+        "investorRunner": "None",
+        "fund": "Chiratae Ventures",
+        "reps": [
+          "Kinshuk Soperna"
+        ],
+        "investorRoom": "None",
+        "timeSlot": "11:30-12:05",
+        "founderCompany": "Handpickd"
+      },
+      {
+        "id": 115,
+        "investorRunner": "None",
+        "fund": "360 One",
+        "reps": [
+          "Tanmay Parasramka"
+        ],
+        "investorRoom": "None",
+        "timeSlot": "11:30-12:05",
+        "founderCompany": "iDo Devices"
+      },
+      {
+        "id": 116,
+        "investorRunner": "None",
+        "fund": "Eight Roads",
+        "reps": [
+          "Diwakar Anand"
+        ],
+        "investorRoom": "None",
+        "timeSlot": "11:30-12:05",
+        "founderCompany": "Lucira"
+      },
+      {
+        "id": 117,
+        "investorRunner": "None",
+        "fund": "Dharana Capital",
+        "reps": [
+          "Parshva Shah"
+        ],
+        "investorRoom": "None",
+        "timeSlot": "11:30-12:05",
+        "founderCompany": "Pico Xpress"
+      },
+      {
+        "id": 118,
+        "investorRunner": "None",
+        "fund": "Creaegis",
+        "reps": [
+          "Amit Ranade"
+        ],
+        "investorRoom": "None",
+        "timeSlot": "11:30-12:05",
+        "founderCompany": "Procol"
+      },
+      {
+        "id": 119,
+        "investorRunner": "None",
+        "fund": "SMBC Asia Rising Fund",
+        "reps": [
+          "Rajeev Ranka",
+          "Mayank Agarwal"
+        ],
+        "investorRoom": "None",
+        "timeSlot": "11:30-12:05",
+        "founderCompany": "Wiffy"
+      },
+      {
+        "id": 120,
+        "investorRunner": "None",
+        "fund": "Creaegis",
+        "reps": [
+          "Amit Ranade"
+        ],
+        "investorRoom": "None",
+        "timeSlot": "12:15-12:50",
+        "founderCompany": "goSTOPS"
+      },
+      {
+        "id": 121,
+        "investorRunner": "None",
+        "fund": "Dharana Capital",
+        "reps": [
+          "Parshva Shah"
+        ],
+        "investorRoom": "None",
+        "timeSlot": "12:15-12:50",
+        "founderCompany": "iDo Devices"
+      },
+      {
+        "id": 122,
+        "investorRunner": "None",
+        "fund": "Chiratae Ventures",
+        "reps": [
+          "Kinshuk Soperna"
+        ],
+        "investorRoom": "None",
+        "timeSlot": "12:15-12:50",
+        "founderCompany": "Lucira"
+      },
+      {
+        "id": 123,
+        "investorRunner": "None",
+        "fund": "Sorin Investments",
+        "reps": [
+          "Alok Anand Patra"
+        ],
+        "investorRoom": "None",
+        "timeSlot": "12:15-12:50",
+        "founderCompany": "Procol"
+      },
+      {
+        "id": 124,
+        "investorRunner": "None",
+        "fund": "GMO Venture Partners",
+        "reps": [
+          "Yuta Yamamoto"
+        ],
+        "investorRoom": "None",
+        "timeSlot": "12:15-12:50",
+        "founderCompany": "Squadstack.ai"
+      },
+      {
+        "id": 125,
+        "investorRunner": "None",
+        "fund": "360 One",
+        "reps": [
+          "Tanmay Parasramka"
+        ],
+        "investorRoom": "None",
+        "timeSlot": "12:15-12:50",
+        "founderCompany": "Wiffy"
+      },
+      {
+        "id": 126,
+        "investorRunner": "None",
+        "fund": "Aavishkaar Capital",
+        "reps": [
+          "Sanchayan Chakraborty",
+          "Kushal Lathia"
+        ],
+        "investorRoom": "None",
+        "timeSlot": "12:15-12:50",
+        "founderCompany": "Namma Yatri"
+      },
+      {
+        "id": 127,
+        "investorRunner": "None",
+        "fund": "360 One",
+        "reps": [
+          "Tanmay Parasramka"
+        ],
+        "investorRoom": "None",
+        "timeSlot": "13:00-13:35",
+        "founderCompany": "Clientell"
+      },
+      {
+        "id": 128,
+        "investorRunner": "None",
+        "fund": "Creaegis",
+        "reps": [
+          "Amit Ranade"
+        ],
+        "investorRoom": "None",
+        "timeSlot": "13:00-13:35",
+        "founderCompany": "FOXO"
+      },
+      {
+        "id": 129,
+        "investorRunner": "None",
+        "fund": "BeeNext",
+        "reps": [
+          "Hero Choudhary",
+          "Priyank Mahajan"
+        ],
+        "investorRoom": "None",
+        "timeSlot": "13:00-13:35",
+        "founderCompany": "IDo Devices"
+      },
+      {
+        "id": 130,
+        "investorRunner": "None",
+        "fund": "Quona",
+        "reps": [
+          "Varun Malhotra"
+        ],
+        "investorRoom": "None",
+        "timeSlot": "13:00-13:35",
+        "founderCompany": "Nivasa"
+      },
+      {
+        "id": 131,
+        "investorRunner": "None",
+        "fund": "Chiratae Ventures",
+        "reps": [
+          "Kinshuk Soperna"
+        ],
+        "investorRoom": "None",
+        "timeSlot": "13:00-13:35",
+        "founderCompany": "Pico Xpress"
+      },
+      {
+        "id": 132,
+        "investorRunner": "None",
+        "fund": "Aavishkaar Capital",
+        "reps": [
+          "Sanchayan Chakraborty",
+          "Kushal Lathia"
+        ],
+        "investorRoom": "None",
+        "timeSlot": "13:00-13:35",
+        "founderCompany": "Procol"
+      },
+      {
+        "id": 133,
+        "investorRunner": "None",
+        "fund": "Dharana Capital",
+        "reps": [
+          "Parshva Shah"
+        ],
+        "investorRoom": "None",
+        "timeSlot": "13:00-13:35",
+        "founderCompany": "Squadstack.ai"
+      },
+      {
+        "id": 134,
+        "investorRunner": "None",
+        "fund": "B Capital",
+        "reps": [
+          "Deepanshu Pattanayak",
+          "Akash Khandelwal",
+          "Karan Mohla"
+        ],
+        "investorRoom": "None",
+        "timeSlot": "13:00-13:35",
+        "founderCompany": "STAGE"
+      },
+      {
+        "id": 135,
+        "investorRunner": "None",
+        "fund": "Pratithi Growth",
+        "reps": [
+          "Saumya Jain"
+        ],
+        "investorRoom": "None",
+        "timeSlot": "13:00-13:35",
+        "founderCompany": "Namma Yatri"
+      },
+      {
+        "id": 136,
+        "investorRunner": "None",
+        "fund": "Quona",
+        "reps": [
+          "Varun Malhotra"
+        ],
+        "investorRoom": "None",
+        "timeSlot": "13:40-14:20",
+        "founderCompany": "Procol"
+      },
+      {
+        "id": 137,
+        "investorRunner": "None",
+        "fund": "HealthKois",
+        "reps": [
+          "Nilay Shah"
+        ],
+        "investorRoom": "None",
+        "timeSlot": "13:45-14:20",
+        "founderCompany": "Clientell"
+      },
+      {
+        "id": 138,
+        "investorRunner": "None",
+        "fund": "Chiratae Ventures",
+        "reps": [
+          "Kinshuk Soperna"
+        ],
+        "investorRoom": "None",
+        "timeSlot": "13:45-14:20",
+        "founderCompany": "goSTOPS"
+      },
+      {
+        "id": 139,
+        "investorRunner": "None",
+        "fund": "Creaegis",
+        "reps": [
+          "Amit Ranade"
+        ],
+        "investorRoom": "None",
+        "timeSlot": "13:45-14:20",
+        "founderCompany": "IDo Devices"
+      },
+      {
+        "id": 140,
+        "investorRunner": "None",
+        "fund": "B Capital",
+        "reps": [
+          "Deepanshu Pattanayak",
+          "Akash Khandelwal",
+          "Karan Mohla"
+        ],
+        "investorRoom": "None",
+        "timeSlot": "13:45-14:20",
+        "founderCompany": "LightFury"
+      },
+      {
+        "id": 141,
+        "investorRunner": "None",
+        "fund": "Steadview",
+        "reps": [
+          "Himanshu Jain"
+        ],
+        "investorRoom": "None",
+        "timeSlot": "13:45-14:20",
+        "founderCompany": "Nivasa"
+      },
+      {
+        "id": 142,
+        "investorRunner": "None",
+        "fund": "Eight Roads",
+        "reps": [
+          "Diwakar Anand"
+        ],
+        "investorRoom": "None",
+        "timeSlot": "13:45-14:20",
+        "founderCompany": "STAGE"
+      },
+      {
+        "id": 143,
+        "investorRunner": "None",
+        "fund": "BeeNext",
+        "reps": [
+          "Hero Choudhary",
+          "Priyank Mahajan"
+        ],
+        "investorRoom": "None",
+        "timeSlot": "13:45-14:20",
+        "founderCompany": "Wiffy"
+      },
+      {
+        "id": 144,
+        "investorRunner": "None",
+        "fund": "Quona",
+        "reps": [
+          "Varun Malhotra"
+        ],
+        "investorRoom": "None",
+        "timeSlot": "14:20-14:50",
+        "founderCompany": "Squadstack.ai"
+      },
+      {
+        "id": 145,
+        "investorRunner": "None",
+        "fund": "B Capital",
+        "reps": [
+          "Deepanshu Pattanayak",
+          "Akash Khandelwal",
+          "Karan Mohla"
+        ],
+        "investorRoom": "None",
+        "timeSlot": "14:30-14:50",
+        "founderCompany": "Clientell"
+      },
+      {
+        "id": 146,
+        "investorRunner": "None",
+        "fund": "HealthKois",
+        "reps": [
+          "Nilay Shah"
+        ],
+        "investorRoom": "None",
+        "timeSlot": "14:30-14:50",
+        "founderCompany": "FOXO"
+      },
+      {
+        "id": 147,
+        "investorRunner": "None",
+        "fund": "Steadview",
+        "reps": [
+          "Himanshu Jain"
+        ],
+        "investorRoom": "None",
+        "timeSlot": "14:30-14:50",
+        "founderCompany": "iDo Devices"
+      },
+      {
+        "id": 148,
+        "investorRunner": "None",
+        "fund": "BeeNext",
+        "reps": [
+          "Hero Choudhary",
+          "Priyank Mahajan"
+        ],
+        "investorRoom": "None",
+        "timeSlot": "14:30-14:50",
+        "founderCompany": "Lucira"
+      },
+      {
+        "id": 149,
+        "investorRunner": "None",
+        "fund": "360 One",
+        "reps": [
+          "Tanmay Parasramka"
+        ],
+        "investorRoom": "None",
+        "timeSlot": "14:30-14:50",
+        "founderCompany": "STAGE"
+      },
+      {
+        "id": 150,
+        "investorRunner": "None",
+        "fund": "Creaegis",
+        "reps": [
+          "Amit Ranade"
+        ],
+        "investorRoom": "None",
+        "timeSlot": "14:30-14:50",
+        "founderCompany": "Wiffy"
+      }
+    ];
     /* 
       Example structure for reference:
       { id: 101, investorRunner: "Udayan", fund: "GIC", reps: ["Gaurav Jain", "Anand Khetan"], investorRoom: "FF-Curate", timeSlot: "3:00 PM – 3:30 PM", founderCompany: "IDfy" },
