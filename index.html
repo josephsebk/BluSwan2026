@@ -165,11 +165,11 @@
       { id: 37, runner: "Yash", timeSlot: "4:30 PM – 5:00 PM", founder: "iDO Devices", investor: "Transsion", room: "FF-Library", rep: "George Li", status: "pending", isPriority: false },
     ];
 
-    // Staff from the "Work" sheet
+    // Staff from the "Work" sheet - UPDATED for New Data
     const STAFF = {
-      founderRunners: ["Sumangal", "Yash"],
+      founderRunners: ["Akshat", "Chaitanya", "Charu", "Apurva", "Sreenidhi"],
       founderRunnerBackup: "Joseph",
-      investorRunners: ["Udayan", "Apurva"],
+      investorRunners: [], // Data missing in new sheet
       investorRunnerBackup: "Ankush",
       registration: "Sreeneedhi",
     };
@@ -190,56 +190,25 @@
     ];
 
     const TIME_SLOTS = [
-      "2:30 PM – 3:00 PM",
-      "3:00 PM – 3:30 PM",
-      "3:30 PM – 4:00 PM",
-      "4:00 PM – 4:30 PM",
-      "4:30 PM – 5:00 PM",
+      "11:30 PM – 12:05 PM",
+      "12:15 PM – 12:50 PM",
+      "13:00 PM – 13:35 PM",
+      "13:45 PM – 14:20 PM",
+      "14:20 PM – 14:50 PM",
+      "14:30 PM – 14:50 PM",
     ];
 
     // Investor Runner assignments — parsed from "Investor View" sheet
     // These are the LP-side view: investor runners escort fund delegations to their fixed room,
     // and founders rotate in to meet them each slot.
-    const INVESTOR_ASSIGNMENTS = [
+    // Investor Runner assignments — parsed from "Investor View" sheet
+    // These are the LP-side view.
+    // NOTE: Cleared as new sheet data does not contain this information.
+    const INVESTOR_ASSIGNMENTS = [];
+    /* 
+      Example structure for reference:
       { id: 101, investorRunner: "Udayan", fund: "GIC", reps: ["Gaurav Jain", "Anand Khetan"], investorRoom: "FF-Curate", timeSlot: "3:00 PM – 3:30 PM", founderCompany: "IDfy" },
-      { id: 102, investorRunner: "Udayan", fund: "GIC", reps: ["Gaurav Jain", "Anand Khetan"], investorRoom: "FF-Curate", timeSlot: "3:30 PM – 4:00 PM", founderCompany: "smallcase" },
-      { id: 103, investorRunner: "Udayan", fund: "GIC", reps: ["Gaurav Jain", "Anand Khetan"], investorRoom: "FF-Curate", timeSlot: "4:00 PM – 4:30 PM", founderCompany: "Optimized Electrotech" },
-      { id: 104, investorRunner: "Udayan", fund: "IFC", reps: ["Shalabh Tandon", "Treasa Mathew", "R. Hirawat", "Gordon Chan"], investorRoom: "GF-Navigate", timeSlot: "2:30 PM – 3:00 PM", founderCompany: "TestMu (formerly Lambdatest)" },
-      { id: 105, investorRunner: "Udayan", fund: "IFC", reps: ["Shalabh Tandon", "Treasa Mathew", "R. Hirawat", "Gordon Chan"], investorRoom: "GF-Navigate", timeSlot: "4:00 PM – 4:30 PM", founderCompany: "iDO Devices" },
-      { id: 106, investorRunner: "Udayan", fund: "Oman Investment Authority", reps: ["Ali Abdulhussain", "Mahmoud Al Khatri"], investorRoom: "GF-Clout", timeSlot: "2:30 PM – 3:00 PM", founderCompany: "iDO Devices" },
-      { id: 107, investorRunner: "Udayan", fund: "Oman Investment Authority", reps: ["Ali Abdulhussain", "Mahmoud Al Khatri"], investorRoom: "GF-Clout", timeSlot: "3:00 PM – 3:30 PM", founderCompany: "Cashify" },
-      { id: 108, investorRunner: "Udayan", fund: "Oman Investment Authority", reps: ["Ali Abdulhussain", "Mahmoud Al Khatri"], investorRoom: "GF-Clout", timeSlot: "3:30 PM – 4:00 PM", founderCompany: "Euler Motors" },
-      { id: 109, investorRunner: "Udayan", fund: "Oman Investment Authority", reps: ["Ali Abdulhussain", "Mahmoud Al Khatri"], investorRoom: "GF-Clout", timeSlot: "4:00 PM – 4:30 PM", founderCompany: "IDfy" },
-      { id: 110, investorRunner: "Udayan", fund: "Oman Investment Authority", reps: ["Ali Abdulhussain", "Mahmoud Al Khatri"], investorRoom: "GF-Clout", timeSlot: "4:30 PM – 5:00 PM", founderCompany: "smallcase" },
-      { id: 111, investorRunner: "Udayan", fund: "Neo Secondaries Fund", reps: ["Nitin Agarwal"], investorRoom: "FF-Aspire", timeSlot: "2:30 PM – 3:00 PM", founderCompany: "Cashify" },
-      { id: 112, investorRunner: "Udayan", fund: "Neo Secondaries Fund", reps: ["Nitin Agarwal"], investorRoom: "FF-Aspire", timeSlot: "3:00 PM – 3:30 PM", founderCompany: "Spinny" },
-      { id: 113, investorRunner: "Udayan", fund: "Neo Secondaries Fund", reps: ["Nitin Agarwal"], investorRoom: "FF-Aspire", timeSlot: "3:30 PM – 4:00 PM", founderCompany: "iDO Devices" },
-      { id: 114, investorRunner: "Udayan", fund: "Neo Secondaries Fund", reps: ["Nitin Agarwal"], investorRoom: "FF-Aspire", timeSlot: "4:00 PM – 4:30 PM", founderCompany: "smallcase" },
-      { id: 115, investorRunner: "Udayan", fund: "Neo Secondaries Fund", reps: ["Nitin Agarwal"], investorRoom: "FF-Aspire", timeSlot: "4:30 PM – 5:00 PM", founderCompany: "Optimo Loans" },
-      { id: 116, investorRunner: "Udayan", fund: "Pavilion Capital", reps: ["Khor Boon How", "Sam"], investorRoom: "FF-Ponder", timeSlot: "2:30 PM – 3:00 PM", founderCompany: "Optimo Loans" },
-      { id: 117, investorRunner: "Udayan", fund: "Pavilion Capital", reps: ["Khor Boon How", "Sam"], investorRoom: "FF-Ponder", timeSlot: "3:00 PM – 3:30 PM", founderCompany: "Squad" },
-      { id: 118, investorRunner: "Udayan", fund: "Pavilion Capital", reps: ["Khor Boon How", "Sam"], investorRoom: "FF-Ponder", timeSlot: "3:30 PM – 4:00 PM", founderCompany: "TestMu (formerly Lambdatest)" },
-      { id: 119, investorRunner: "Udayan", fund: "Pavilion Capital", reps: ["Khor Boon How", "Sam"], investorRoom: "FF-Ponder", timeSlot: "4:00 PM – 4:30 PM", founderCompany: "Aerem" },
-      { id: 120, investorRunner: "Udayan", fund: "Pavilion Capital", reps: ["Khor Boon How", "Sam"], investorRoom: "FF-Ponder", timeSlot: "4:30 PM – 5:00 PM", founderCompany: "Optimized Electrotech" },
-      { id: 121, investorRunner: "Udayan", fund: "Nippon India", reps: ["Ankit Agarwal"], investorRoom: "GF-Library", timeSlot: "2:30 PM – 3:00 PM", founderCompany: "Aerem" },
-      { id: 122, investorRunner: "Udayan", fund: "Nippon India", reps: ["Ankit Agarwal"], investorRoom: "GF-Library", timeSlot: "3:00 PM – 3:30 PM", founderCompany: "Virohan" },
-      { id: 123, investorRunner: "Udayan", fund: "Nippon India", reps: ["Ankit Agarwal"], investorRoom: "GF-Library", timeSlot: "3:30 PM – 4:00 PM", founderCompany: "Optimo Loans" },
-      { id: 124, investorRunner: "Udayan", fund: "Nippon India", reps: ["Ankit Agarwal"], investorRoom: "GF-Library", timeSlot: "4:00 PM – 4:30 PM", founderCompany: "Stage" },
-      { id: 125, investorRunner: "Apurva", fund: "Transsion", reps: ["George Li"], investorRoom: "FF-Library", timeSlot: "2:30 PM – 3:00 PM", founderCompany: "Stage" },
-      { id: 126, investorRunner: "Apurva", fund: "Transsion", reps: ["George Li"], investorRoom: "FF-Library", timeSlot: "3:00 PM – 3:30 PM", founderCompany: "Euler Motors" },
-      { id: 127, investorRunner: "Apurva", fund: "Transsion", reps: ["George Li"], investorRoom: "FF-Library", timeSlot: "3:30 PM – 4:00 PM", founderCompany: "Spinny" },
-      { id: 128, investorRunner: "Apurva", fund: "Transsion", reps: ["George Li"], investorRoom: "FF-Library", timeSlot: "4:30 PM – 5:00 PM", founderCompany: "iDO Devices" },
-      { id: 129, investorRunner: "Apurva", fund: "Catamaran", reps: ["Sheetal Bhat"], investorRoom: "FF-Balance", timeSlot: "2:30 PM – 3:00 PM", founderCompany: "Optimized Electrotech" },
-      { id: 130, investorRunner: "Apurva", fund: "Catamaran", reps: ["Sheetal Bhat"], investorRoom: "FF-Balance", timeSlot: "3:00 PM – 3:30 PM", founderCompany: "iDO Devices" },
-      { id: 131, investorRunner: "Apurva", fund: "Unilever Ventures", reps: ["Pawan Chaturvedi", "Devesh Papney", "Priyanka Thakkar"], investorRoom: "FF-Buzz", timeSlot: "2:30 PM – 3:00 PM", founderCompany: "SuperK" },
-      { id: 132, investorRunner: "Apurva", fund: "Transpose Platform", reps: ["Fiyin Olayisade", "Shashank P S"], investorRoom: "GF-Library", timeSlot: "2:30 PM – 3:00 PM", founderCompany: "Squad" },
-      { id: 133, investorRunner: "Apurva", fund: "Evolvence Equity Partners", reps: ["Anoushka"], investorRoom: "FF-Introspect", timeSlot: "2:30 PM – 3:00 PM", founderCompany: "IDfy" },
-      { id: 134, investorRunner: "Apurva", fund: "Evolvence Equity Partners", reps: ["Anoushka"], investorRoom: "FF-Introspect", timeSlot: "3:30 PM – 4:00 PM", founderCompany: "Cashify" },
-      { id: 135, investorRunner: "Apurva", fund: "Mirabilis Investment Trust", reps: ["Boris DSouza"], investorRoom: "FF-Balance", timeSlot: "3:30 PM – 4:00 PM", founderCompany: "IDfy" },
-      { id: 136, investorRunner: "Apurva", fund: "Mirabilis Investment Trust", reps: ["Boris DSouza"], investorRoom: "FF-Balance", timeSlot: "4:00 PM – 4:30 PM", founderCompany: "Cashify" },
-      { id: 137, investorRunner: "Apurva", fund: "Prosperity 7", reps: ["Balsam Alsaif", "Raed Twaily", "Omar Alnammary", "Abhishek Shukla"], investorRoom: "GF-LAZE", timeSlot: "3:00 PM – 3:30 PM", founderCompany: "TestMu (formerly Lambdatest)" },
-      { id: 138, investorRunner: "Apurva", fund: "Prosperity 7", reps: ["Balsam Alsaif", "Raed Twaily", "Omar Alnammary", "Abhishek Shukla"], investorRoom: "GF-LAZE", timeSlot: "3:30 PM – 4:00 PM", founderCompany: "Optimized Electrotech" },
-    ];
+    */
 
     // ─── Context ─────────────────────────────────────────────────────────────────
     const AppContext = createContext();
