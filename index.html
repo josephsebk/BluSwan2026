@@ -60,7 +60,12 @@
           const data = await res.json();
           if (data.meetings) {
             return data.meetings.map((m) => ({
-              id: m.id, runner: m.runner || "", timeSlot: m.timeSlot || "",
+              id: m.id, runner: m.runner || "",
+              // FIX: Replace "11:30 PM", "10:00 PM", "10:45 PM" with AM
+              timeSlot: (m.timeSlot || "")
+                .replace("11:30 PM", "11:30 AM")
+                .replace("10:00 PM", "10:00 AM")
+                .replace("10:45 PM", "10:45 AM"),
               founder: m.company || m.founder || "",
               investor: m.investor || "", room: m.room || "",
               rep: m.rep || "",
@@ -95,10 +100,31 @@
     // If the file is missing or blocked, INVESTOR_IMAGES might be undefined, handle gracefully.
 
     // Fallback if script fails to load
-    if (typeof INVESTOR_IMAGES === 'undefined') {
-      var INVESTOR_IMAGES = {};
-      console.warn("investor_images.js not loaded or undefined.");
-    }
+    // DEFINED DIRECTLY TO AVOID LOADING ISSUES
+    const INVESTOR_IMAGES = {
+      "Company Picture 1 Gaurav Jain GIC": "assets/investors/image1.png",
+      "2 Shalabh Tandon IFC": "assets/investors/image2.png",
+      "3 Treasa Mathew IFC": "assets/investors/image3.png",
+      "4 Gordon Chan IFC": "assets/investors/image4.jpeg",
+      "5 Ali Abdulhussain Oman Investment Authority": "assets/investors/image5.jpeg",
+      "6 Mahmoud Al Khatri Oman Investment Authority": "assets/investors/image6.png",
+      "7 Boon How Khor Pavilion Capital": "assets/investors/image7.png",
+      "8 Sam CHEN Pavilion Capital": "assets/investors/image8.png",
+      "9 Ankit Agarwal Nippon India": "assets/investors/image9.png",
+      "10 George Li Transsion": "assets/investors/image10.png",
+      "11 Pawan Chaturvedi Unilever Ventures": "assets/investors/image11.png",
+      "12 Devesh Papney Unilever Ventures": "assets/investors/image12.png",
+      "13 Priyanka Thakkar Unilever Ventures": "assets/investors/image13.png",
+      "14 Fiyin Olayisade Transpose Platform": "assets/investors/image14.png",
+      "15 Anoushka Evolvence Equity Partners": "assets/investors/image15.jpeg",
+      "16 Boris DSouza Mirabilis": "assets/investors/image16.png",
+      "17 Balsam Alsaif Prosperity 7": "assets/investors/image17.jpeg",
+      "18 Raed Twaily Prosperity 7": "assets/investors/image18.jpeg",
+      "19 Omar Alnammary Prosperity 7": "assets/investors/image19.png",
+      "20 Abhishek Shukla Prosperity 7": "assets/investors/image20.jpeg",
+      "21 Kiran UTEC": "assets/investors/image21.jpeg",
+      "22 Nitin Agarwal Neo Secondaries Fund": "assets/investors/image22.png",
+    };
 
     const getInvestorImage = (name) => {
       if (!ENABLE_INVESTOR_IMAGES || !name) return null;
@@ -107,12 +133,30 @@
     };
 
     // Helper to find Investor Reps for a given meeting (joining data sources)
+
     const getInvestorRepsForMeeting = (meeting) => {
-      const assignment = INVESTOR_ASSIGNMENTS.find(a =>
-        (a.fund === meeting.investor) &&
-        (a.timeSlot === meeting.timeSlot) &&
-        (meeting.founder.includes(a.founderCompany) || a.founderCompany.includes(meeting.founder))
-      );
+      // Normalize strings for comparison (remove spaces, case insensitive)
+      const clean = (s) => (s || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+
+      const meetingTime = clean(meeting.timeSlot); // e.g. "1130pm1205pm" -> "1130pm1205pm" ... wait, let's just strip non-digits
+      const simpleTime = (s) => (s || "").replace(/[^\d]/g, "");
+
+      const assignment = INVESTOR_ASSIGNMENTS.find(a => {
+        // Match Fund (fuzzy)
+        const fundMatch = clean(a.fund) === clean(meeting.investor);
+
+        // Match Time (digits only)
+        // a.timeSlot "11:30-12:05" -> "11301205"
+        // meeting.timeSlot "11:30 PM – 12:05 PM" -> "11301205"
+        const timeMatch = simpleTime(a.timeSlot) === simpleTime(meeting.timeSlot);
+
+        // Match Company (fuzzy)
+        const companyMatch = meeting.founder.toLowerCase().includes(a.founderCompany.toLowerCase()) ||
+          a.founderCompany.toLowerCase().includes(meeting.founder.toLowerCase());
+
+        return fundMatch && timeMatch && companyMatch;
+      });
+      console.log(`Matching meeting ${meeting.id}: Fund=${meeting.investor}, Time=${meeting.timeSlot}, Founder=${meeting.founder} => Found:`, assignment);
       return assignment ? assignment.reps : [];
     };
 
@@ -190,7 +234,9 @@
     ];
 
     const TIME_SLOTS = [
-      "11:30 PM – 12:05 PM",
+      "10:00 AM – 10:35 AM",
+      "10:45 AM – 11:20 AM",
+      "11:30 AM – 12:05 PM",
       "12:15 PM – 12:50 PM",
       "13:00 PM – 13:35 PM",
       "13:45 PM – 14:20 PM",
@@ -926,9 +972,7 @@
             <button onClick={() => setView("runner-login")} className="btn-splash-primary">
               <span style={{ fontSize: 20 }}>📱</span> Founder Runner
             </button>
-            <button onClick={() => setView("investor-runner-login")} className="btn-splash-investor">
-              <span style={{ fontSize: 20 }}>💼</span> Investor Runner
-            </button>
+
             <button onClick={() => setView("concierge")} className="btn-splash-secondary">
               <span style={{ fontSize: 20 }}>🖥️</span> Dashboard
 
@@ -1136,7 +1180,12 @@
                 {getMatchInvestorImage(meeting) && (
                   <img src={getMatchInvestorImage(meeting)} className="investor-avatar-card" alt="Investor" />
                 )}
-                <p style={{ fontSize: 15, color: "rgba(255,255,255,0.85)", fontWeight: 600 }}>{meeting.investor}</p>
+                <div>
+                  <p style={{ fontSize: 15, color: "rgba(255,255,255,0.85)", fontWeight: 600, margin: 0 }}>{meeting.investor}</p>
+                  {getInvestorRepsForMeeting(meeting).length > 0 && (
+                    <p style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", margin: 0 }}>{getInvestorRepsForMeeting(meeting).join(", ")}</p>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -1708,11 +1757,19 @@
       const clock = useClock();
       const [filter, setFilter] = useState("all");
       const [slotFilter, setSlotFilter] = useState("all");
+      const [runnerFilter, setRunnerFilter] = useState("all");
       const [search, setSearch] = useState("");
+
+      // Unique runners
+      const allRunners = useMemo(() => {
+        const r = new Set(meetings.map(m => m.runner).filter(Boolean));
+        return Array.from(r).sort();
+      }, [meetings]);
 
       const filtered = useMemo(() => {
         let result = [...meetings];
         if (slotFilter !== "all") result = result.filter((m) => m.timeSlot === slotFilter);
+        if (runnerFilter !== "all") result = result.filter((m) => m.runner === runnerFilter);
         if (filter === "live") result = result.filter((m) => m.status === "started");
         if (filter === "pending") result = result.filter((m) => m.status === "pending");
         if (filter === "priority") result = result.filter((m) => m.isPriority);
@@ -1723,7 +1780,7 @@
           );
         }
         return result;
-      }, [meetings, filter, slotFilter, search]);
+      }, [meetings, filter, slotFilter, runnerFilter, search]);
 
       const liveCount = meetings.filter((m) => m.status === "started").length;
       const pendingCount = meetings.filter((m) => m.status === "pending").length;
@@ -1788,13 +1845,27 @@
                 );
               })}
             </div>
-            <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+            <div style={{ display: "flex", gap: 8, marginTop: 10, alignItems: "center" }}>
               <button onClick={() => setFilter("all")} className={filter === "all" ? "filter-btn-active" : "filter-btn"}>All ({stats.total})</button>
               <button onClick={() => setFilter("live")} className={filter === "live" ? "filter-btn-live" : "filter-btn"}>
                 {liveCount > 0 && <div className="pulse-dot-tiny" />} Live ({liveCount})
               </button>
               <button onClick={() => setFilter("pending")} className={filter === "pending" ? "filter-btn-active" : "filter-btn"}>Pending ({pendingCount})</button>
               <button onClick={() => setFilter("priority")} className={filter === "priority" ? "filter-btn-priority" : "filter-btn"}>⭐ Top 3 ({priorityCount})</button>
+
+              <div style={{ width: 1, height: 20, background: "rgba(255,255,255,0.1)", margin: "0 4px" }} />
+
+              <select
+                value={runnerFilter}
+                onChange={(e) => setRunnerFilter(e.target.value)}
+                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#fff", fontSize: 12, borderRadius: 8, padding: "6px 24px 6px 12px", outline: "none", cursor: "pointer", fontFamily: "Manrope, sans-serif", appearance: "none", backgroundImage: "url(\"data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.3)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e\")", backgroundRepeat: "no-repeat", backgroundPosition: "right 8px center", backgroundSize: "14px" }}
+              >
+                <option value="all">All Runners</option>
+                {allRunners.map(r => (
+                  <option key={r} value={r}>{r}</option>
+                ))}
+              </select>
+
               <div style={{ marginLeft: "auto", position: "relative" }}>
                 <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search founder, fund, room..." style={{ background: "rgba(19,31,24,0.8)", border: "1px solid rgba(255,255,255,0.08)", color: "#fff", fontSize: 12, borderRadius: 8, padding: "8px 14px 8px 32px", width: 240, outline: "none", fontFamily: "Manrope, sans-serif" }} />
                 <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", fontSize: 14, color: "rgba(255,255,255,0.25)" }}>🔍</span>
