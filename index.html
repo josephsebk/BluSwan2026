@@ -982,7 +982,8 @@
             button:contains('Investor Runner') { display: none !important; } 
           `}</style>
           {/* FAILSAFE: Remove Investor Runner if present via other means */}
-          <script dangerouslySetInnerHTML={{__html: `
+          <script dangerouslySetInnerHTML={{
+            __html: `
             setInterval(() => {
               const btns = document.querySelectorAll('button');
               btns.forEach(b => {
@@ -1867,7 +1868,6 @@
 
               <div style={{ width: 1, height: 20, background: "rgba(255,255,255,0.1)", margin: "0 4px" }} />
 
-              {/* RUNNER FILTER - BACKUP FOR FUTURE USE
               <select
                 value={runnerFilter}
                 onChange={(e) => setRunnerFilter(e.target.value)}
@@ -1878,7 +1878,7 @@
                   <option key={r} value={r}>{r}</option>
                 ))}
               </select>
-              */}
+
 
               <div style={{ marginLeft: "auto", position: "relative" }}>
                 <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search founder, fund, room..." style={{ background: "rgba(19,31,24,0.8)", border: "1px solid rgba(255,255,255,0.08)", color: "#fff", fontSize: 12, borderRadius: 8, padding: "8px 14px 8px 32px", width: 240, outline: "none", fontFamily: "Manrope, sans-serif" }} />
