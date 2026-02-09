@@ -7,15 +7,17 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#050505">
-    <title>Founder Personalized Schedule</title>
+    <title>Founder Schedule — BluSwan 2026</title>
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦢</text></svg>">
 
     <!-- Dependencies -->
-    <link
-        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
-        rel="stylesheet" />
     <link href="https://fonts.googleapis.com" rel="preconnect" />
     <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap"
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
         rel="stylesheet" />
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
@@ -30,42 +32,50 @@
             theme: {
                 extend: {
                     colors: {
-                        "primary": "#2ECC71",
+                        "primary": "#2ecc70",
                         "alert": "#F39C12",
-                        "background-dark": "#050505",
-                        "surface-dark": "#121212",
-                        "surface-lighter": "#1A1A1A",
+                        "background": "#050505",
+                        "surface": "#0D0D0D",
+                        "surface-highlight": "#161618",
+                        "border-subtle": "#1F1F21",
                     },
                     fontFamily: {
-                        "display": ["Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica", "Arial", "sans-serif"],
+                        "sans": ["Manrope", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica", "Arial", "sans-serif"],
                     },
                     boxShadow: {
-                        'glow': '0 0 20px rgba(46, 204, 113, 0.25)',
-                        'glow-alert': '0 0 20px rgba(243, 156, 18, 0.25)',
+                        'glow': '0 0 20px rgba(46, 204, 112, 0.25)',
+                        'glow-border': '0 0 0 1px rgba(46, 204, 112, 0.4), 0 0 10px rgba(46, 204, 112, 0.2)',
+                        'glow-alert': '0 0 0 1px rgba(243, 156, 18, 0.4), 0 0 10px rgba(243, 156, 18, 0.2)',
                     }
                 },
             },
         }
     </script>
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #050505;
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body, html {
+            font-family: 'Manrope', sans-serif;
+            background: #050505;
+            color: #fff;
             -webkit-font-smoothing: antialiased;
         }
 
-        .no-scrollbar::-webkit-scrollbar {
-            display: none;
-        }
+        @keyframes pulse-glow { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-        .no-scrollbar {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-        }
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #2C2C2E; border-radius: 2px; }
 
-        .mask-linear-fade {
-            -webkit-mask-image: linear-gradient(to right, black 85%, transparent 100%);
-            mask-image: linear-gradient(to right, black 85%, transparent 100%);
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        .glass-panel {
+            background: rgba(5, 5, 5, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
         }
 
         .safe-area-pb {
@@ -73,13 +83,21 @@
         }
 
         .material-symbols-outlined.fill-1 {
-            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+
+        .pulse-dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: #2ecc70; animation: pulse-glow 2s infinite; flex-shrink: 0;
+        }
+        .pulse-dot-sm {
+            width: 6px; height: 6px; border-radius: 50%;
+            background: #2ecc70; animation: pulse-glow 2s infinite; flex-shrink: 0;
         }
     </style>
 </head>
 
-<body
-    class="bg-background-dark text-white h-screen w-full flex flex-col overflow-hidden font-display selection:bg-primary selection:text-black">
+<body class="bg-background text-white h-screen w-full flex flex-col overflow-hidden font-sans selection:bg-primary selection:text-black">
     <div id="root" class="h-full w-full flex flex-col"></div>
 
     <script type="text/babel" data-type="module">
@@ -119,6 +137,9 @@
             const [meetings, setMeetings] = useState([]);
             const [loading, setLoading] = useState(false);
             const [lastSync, setLastSync] = useState(null);
+            const [fadeIn, setFadeIn] = useState(false);
+
+            useEffect(() => { setTimeout(() => setFadeIn(true), 50); }, []);
 
             const fetchMeetings = useCallback(async () => {
                 try {
@@ -152,190 +173,441 @@
                 return meetings.filter(m => (m.company === founder || m.founder === founder)).sort((a, b) => a.id - b.id);
             }, [meetings, founder]);
 
+            // Extract unique time slots from this founder's meetings
+            const timeSlots = useMemo(() => {
+                const slots = new Set(myMeetings.map(m => m.timeSlot).filter(Boolean));
+                return Array.from(slots).sort((a, b) => a.localeCompare(b));
+            }, [myMeetings]);
+
+            // Stats
+            const stats = useMemo(() => {
+                const started = myMeetings.filter(m => m.status === 'started').length;
+                return { started, total: myMeetings.length, pct: myMeetings.length > 0 ? Math.round((started / myMeetings.length) * 100) : 0 };
+            }, [myMeetings]);
+
             if (view === "login") {
-                return (
-                    <div className="flex flex-col min-h-screen p-6 items-center justify-center">
-                        <div className="text-center mb-12">
-                            <div className="text-6xl mb-4">🦢</div>
-                            <h1 className="text-3xl font-bold tracking-tight">Welcome, Founder</h1>
-                            <p className="text-white/40 mt-2">Select your company to view schedule</p>
-                        </div>
-                        {loading && founders.length === 0 ? (
-                            <div className="flex items-center gap-2 text-primary/80">
-                                <span className="animate-spin material-symbols-outlined">sync</span>
-                                Loading...
-                            </div>
-                        ) : (
-                            <div className="w-full max-w-sm space-y-3">
-                                {founders.map(f => (
-                                    <button key={f} onClick={() => { setFounder(f); setView("schedule"); }}
-                                        className="w-full flex items-center gap-4 bg-surface-lighter hover:bg-white/10 border border-white/5 p-4 rounded-2xl transition-all active:scale-[0.98]">
-                                        <div className="h-10 w-10 rounded-full bg-white/10 flex items-center justify-center text-lg font-bold">
-                                            {f[0]}
-                                        </div>
-                                        <span className="text-lg font-semibold">{f}</span>
-                                        <span className="material-symbols-outlined ml-auto text-white/20">arrow_forward</span>
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                );
+                return <LoginScreen
+                    loading={loading}
+                    founders={founders}
+                    fadeIn={fadeIn}
+                    lastSync={lastSync}
+                    onSelect={(f) => { setFounder(f); setView("schedule"); }}
+                />;
             }
 
+            return <ScheduleView
+                founder={founder}
+                myMeetings={myMeetings}
+                timeSlots={timeSlots}
+                stats={stats}
+                lastSync={lastSync}
+                onBack={() => setView('login')}
+            />;
+        }
+
+        // ─── Login Screen ──────────────────────────────────────────────────
+        function LoginScreen({ loading, founders, fadeIn, lastSync, onSelect }) {
+            const [search, setSearch] = useState("");
+
+            const filtered = useMemo(() => {
+                if (!search.trim()) return founders;
+                const q = search.toLowerCase();
+                return founders.filter(f => f.toLowerCase().includes(q));
+            }, [founders, search]);
+
             return (
-                <div className="flex flex-col h-full overflow-hidden">
-                    {/* Header */}
-                    <header className="flex-none pt-12 pb-4 px-5 bg-background-dark z-20 sticky top-0 border-b border-white/5">
-                        <div className="flex items-center justify-between mb-6">
-                            <button onClick={() => setView('login')} className="flex items-center gap-2 text-white/60 hover:text-white transition-colors cursor-pointer">
-                                <span className="material-symbols-outlined text-[20px]">arrow_back</span>
-                                <span className="text-sm font-medium">Back</span>
-                            </button>
-                            <div className="bg-primary/20 border border-primary/30 px-3 py-1 rounded-full flex items-center gap-1.5">
-                                <span className="relative flex h-2 w-2">
-                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
-                                </span>
-                                <span className="text-[10px] font-bold tracking-wider text-primary uppercase">{lastSync ? "LIVE" : "SYNCING"}</span>
+                <div style={{
+                    minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                    background: "radial-gradient(ellipse at 50% 30%, rgba(46,204,112,0.06) 0%, #050505 70%)",
+                    position: "relative", opacity: fadeIn ? 1 : 0, transition: "opacity 0.8s ease", padding: 24
+                }}>
+                    {/* Sync Badge */}
+                    <div style={{ position: "absolute", top: 20, right: 20 }}>
+                        <div style={{
+                            display: "flex", alignItems: "center", gap: 5, padding: "4px 10px", borderRadius: 8,
+                            background: lastSync ? "rgba(46,204,112,0.06)" : "rgba(255,255,255,0.04)",
+                            border: `1px solid ${lastSync ? "rgba(46,204,112,0.15)" : "rgba(255,255,255,0.08)"}`
+                        }}>
+                            <div className="pulse-dot-sm" style={{ background: lastSync ? "#2ecc70" : "#666" }} />
+                            <span style={{ fontSize: 10, fontWeight: 600, color: lastSync ? "#2ecc70" : "rgba(255,255,255,0.3)" }}>
+                                {lastSync ? "Live" : "Connecting..."}
+                            </span>
+                        </div>
+                    </div>
+
+                    {/* Branding */}
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, marginBottom: 48 }}>
+                        <div style={{ fontSize: 64, filter: "drop-shadow(0 0 30px rgba(46,204,112,0.3))" }}>🦢</div>
+                        <h1 style={{ fontSize: 36, fontWeight: 800, letterSpacing: "-0.03em", color: "#fff", lineHeight: 1 }}>BluSwan</h1>
+                        <p style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.25em", color: "rgba(255,255,255,0.3)", textTransform: "uppercase" }}>2026 · Founder Schedule</p>
+                    </div>
+
+                    {loading && founders.length === 0 ? (
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <div className="pulse-dot" />
+                            <span style={{ fontSize: 13, fontWeight: 600, color: "rgba(46,204,112,0.8)" }}>Loading companies...</span>
+                        </div>
+                    ) : (
+                        <div style={{ width: "100%", maxWidth: 360 }}>
+                            {/* Search */}
+                            <div style={{
+                                display: "flex", alignItems: "center", gap: 10,
+                                background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)",
+                                borderRadius: 16, padding: "12px 16px", marginBottom: 16, transition: "border-color 0.2s"
+                            }}>
+                                <span className="material-symbols-outlined" style={{ fontSize: 18, color: "rgba(255,255,255,0.25)" }}>search</span>
+                                <input
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                    placeholder="Search your company..."
+                                    style={{
+                                        flex: 1, background: "none", border: "none", outline: "none", color: "#fff",
+                                        fontFamily: "Manrope, sans-serif", fontSize: 15, fontWeight: 500
+                                    }}
+                                />
+                            </div>
+
+                            {/* Company List */}
+                            <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: "50vh", overflowY: "auto" }} className="no-scrollbar">
+                                {filtered.map(f => (
+                                    <button key={f} onClick={() => onSelect(f)} style={{
+                                        display: "flex", alignItems: "center", gap: 14, width: "100%", padding: "16px 20px",
+                                        borderRadius: 20, border: "1px solid rgba(255,255,255,0.08)",
+                                        background: "rgba(22,46,30,0.6)", color: "#fff",
+                                        fontFamily: "Manrope, sans-serif", cursor: "pointer", transition: "all 0.2s", textAlign: "left"
+                                    }}>
+                                        <div style={{
+                                            width: 44, height: 44, borderRadius: "50%",
+                                            background: "linear-gradient(135deg, rgba(46,204,112,0.2), rgba(46,204,112,0.05))",
+                                            display: "flex", alignItems: "center", justifyContent: "center",
+                                            fontSize: 18, fontWeight: 800, color: "#2ecc70",
+                                            border: "1px solid rgba(46,204,112,0.15)", flexShrink: 0
+                                        }}>{f[0]}</div>
+                                        <div style={{ flex: 1 }}>
+                                            <div style={{ fontSize: 18, fontWeight: 700, color: "#fff" }}>{f}</div>
+                                            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", fontWeight: 500 }}>Tap to view schedule</div>
+                                        </div>
+                                        <span style={{ color: "rgba(255,255,255,0.2)", fontSize: 22 }}>→</span>
+                                    </button>
+                                ))}
+                                {filtered.length === 0 && (
+                                    <div style={{ textAlign: "center", padding: "40px 0", color: "rgba(255,255,255,0.3)" }}>
+                                        <p style={{ fontSize: 14 }}>No companies match "{search}"</p>
+                                    </div>
+                                )}
                             </div>
                         </div>
-                        <h1 className="text-3xl font-bold tracking-tight text-white">{founder}</h1>
-                        <p className="text-white/40 text-sm font-medium mt-1">BluSwan 2026 • Founder Schedule</p>
+                    )}
+                </div>
+            );
+        }
 
-                        {/* Time Picker (Visual Only for now) */}
-                        <div className="mt-8 flex gap-3 overflow-x-auto no-scrollbar pb-2 mask-linear-fade">
-                            {["02:00", "02:30", "03:00", "03:30", "04:00", "04:30"].map((time, i) => (
-                                <button key={time} className={`flex flex-col items-center justify-center min-w-[70px] h-[70px] rounded-2xl shrink-0 transition-all ${i === 0 ? 'bg-primary text-black shadow-glow scale-105' : 'bg-surface-lighter border border-white/10 text-white/60'}`}>
-                                    <span className="text-sm font-bold">{time}</span>
-                                    {i === 0 && <span className="text-[10px] font-bold uppercase mt-0.5">Now</span>}
-                                </button>
-                            ))}
+        // ─── Schedule View ─────────────────────────────────────────────────
+        function ScheduleView({ founder, myMeetings, timeSlots, stats, lastSync, onBack }) {
+            return (
+                <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
+                    {/* Header */}
+                    <header className="glass-panel" style={{ flexShrink: 0, padding: "16px 20px 20px", zIndex: 20, position: "sticky", top: 0 }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+                            <button onClick={onBack} style={{
+                                display: "flex", alignItems: "center", gap: 6,
+                                background: "none", border: "none", color: "rgba(255,255,255,0.5)",
+                                fontFamily: "Manrope, sans-serif", fontSize: 14, fontWeight: 600,
+                                cursor: "pointer", padding: "6px 10px", borderRadius: 8, transition: "all 0.15s"
+                            }}>
+                                <span className="material-symbols-outlined" style={{ fontSize: 18 }}>arrow_back</span>
+                                Back
+                            </button>
+                            <div style={{
+                                display: "flex", alignItems: "center", gap: 6,
+                                background: "rgba(46,204,112,0.1)", border: "1px solid rgba(46,204,112,0.3)",
+                                borderRadius: 999, padding: "6px 14px 6px 10px"
+                            }}>
+                                <div className="pulse-dot-sm" style={{ boxShadow: "0 0 10px #2ecc70" }} />
+                                <span style={{ fontSize: 10, fontWeight: 800, color: "#2ecc70", letterSpacing: "0.1em", textTransform: "uppercase" }}>
+                                    {lastSync ? `Live · ${lastSync.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : "Syncing"}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 12 }}>
+                            <div style={{
+                                width: 40, height: 40, borderRadius: 10,
+                                background: "rgba(46,204,112,0.12)", display: "flex", alignItems: "center", justifyContent: "center",
+                                fontSize: 22
+                            }}>🦢</div>
+                            <div>
+                                <h1 style={{ fontSize: 22, fontWeight: 800, color: "#fff", lineHeight: 1.1, letterSpacing: "-0.02em" }}>{founder}</h1>
+                                <p style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.15em", marginTop: 2 }}>
+                                    BluSwan 2026 · Founder Schedule
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Progress Bar */}
+                        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+                            <span style={{ fontSize: 10, fontWeight: 700, color: "#2ecc70", textTransform: "uppercase", letterSpacing: "0.1em" }}>Progress</span>
+                            <div style={{ flex: 1, height: 6, background: "rgba(255,255,255,0.08)", borderRadius: 999, overflow: "hidden" }}>
+                                <div style={{ height: "100%", background: "#2ecc70", borderRadius: 999, transition: "width 0.6s ease", boxShadow: "0 0 10px rgba(46,204,112,0.6)", width: `${stats.pct}%` }} />
+                            </div>
+                            <span style={{ fontSize: 12, fontWeight: 700, color: "#2ecc70" }}>{stats.started}/{stats.total}</span>
+                        </div>
+
+                        {/* Time Slot Tabs */}
+                        <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 2 }} className="no-scrollbar">
+                            {timeSlots.map((slot, i) => {
+                                const short = slot.split(" – ")[0] || slot.split("-")[0] || slot;
+                                return (
+                                    <div key={slot} style={{
+                                        padding: "8px 14px", borderRadius: 999, flexShrink: 0,
+                                        border: "1px solid rgba(255,255,255,0.08)",
+                                        background: "rgba(22,46,30,0.6)", color: "rgba(255,255,255,0.5)",
+                                        fontSize: 12, fontWeight: 600, whiteSpace: "nowrap"
+                                    }}>
+                                        {short}
+                                    </div>
+                                );
+                            })}
                         </div>
                     </header>
 
                     {/* Main Content */}
-                    <main className="flex-1 overflow-y-auto px-5 py-2 pb-24 space-y-6">
+                    <main style={{ flex: 1, overflowY: "auto", padding: "12px 20px 140px" }}>
                         {myMeetings.length === 0 && (
-                            <div className="text-center py-20 text-white/30">
-                                <span className="material-symbols-outlined text-4xl mb-2">calendar_today</span>
-                                <p>No meetings found.</p>
+                            <div style={{ textAlign: "center", padding: "80px 0", color: "rgba(255,255,255,0.3)" }}>
+                                <span className="material-symbols-outlined" style={{ fontSize: 48, marginBottom: 8, display: "block" }}>calendar_today</span>
+                                <p style={{ fontSize: 15, fontWeight: 600 }}>No meetings found</p>
+                                <p style={{ fontSize: 12, marginTop: 4, color: "rgba(255,255,255,0.2)" }}>Check back when the schedule is live</p>
                             </div>
                         )}
 
-                        {myMeetings.map((m, i) => {
-                            const currentFloor = getRoomFloor(m.room);
-                            let showMove = false;
-                            let prevFloor = null;
+                        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                            {myMeetings.map((m, i) => {
+                                const currentFloor = getRoomFloor(m.room);
+                                let showMove = false;
+                                let prevFloor = null;
 
-                            if (i > 0) {
-                                const prevM = myMeetings[i - 1];
-                                prevFloor = getRoomFloor(prevM.room);
-                                if (currentFloor !== prevFloor && prevFloor !== "Unknown" && currentFloor !== "Unknown") {
-                                    showMove = true;
+                                if (i > 0) {
+                                    const prevM = myMeetings[i - 1];
+                                    prevFloor = getRoomFloor(prevM.room);
+                                    if (currentFloor !== prevFloor && prevFloor !== "Unknown" && currentFloor !== "Unknown") {
+                                        showMove = true;
+                                    }
                                 }
-                            }
 
-                            const isStarted = m.status === 'started';
-                            const isFirst = i === 0;
-                            const sectionTitle = isStarted ? "Current Session" : (isFirst ? "Up Next" : "Upcoming");
-                            const cardClass = isStarted
-                                ? "block relative w-full rounded-[20px] bg-gradient-to-br from-[#151515] to-black border-2 border-primary shadow-glow overflow-hidden group"
-                                : (isFirst
-                                    ? "block relative w-full rounded-[20px] bg-surface-lighter border border-white/5 p-6 active:scale-[0.99] transition-transform"
-                                    : "block relative w-full rounded-[20px] bg-surface-dark border border-white/5 p-6 opacity-80");
+                                const isStarted = m.status === 'started';
+                                const repImage = INVESTOR_IMAGES[m.rep];
+                                const slotShort = (m.timeSlot || "").split(" – ")[0] || m.timeSlot;
 
-                            const repImage = INVESTOR_IMAGES[m.rep];
-
-                            return (
-                                <React.Fragment key={m.id}>
-                                    {/* Floor Change Banner */}
-                                    {showMove && (
-                                        <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-[#F39C12]/20 to-[#F39C12]/5 border border-[#F39C12]/40 p-4 shadow-glow-alert flex items-center justify-between mb-4">
-                                            <div className="absolute top-0 left-0 w-1 h-full bg-[#F39C12]"></div>
-                                            <div className="flex items-center gap-4 z-10">
-                                                <div className="h-10 w-10 rounded-full bg-[#F39C12]/20 flex items-center justify-center text-[#F39C12]">
-                                                    <span className="material-symbols-outlined">elevator</span>
+                                return (
+                                    <React.Fragment key={m.id}>
+                                        {/* Floor Change Banner */}
+                                        {showMove && (
+                                            <div style={{
+                                                position: "relative", overflow: "hidden", borderRadius: 14,
+                                                background: "rgba(243,156,18,0.08)", border: "1px solid rgba(243,156,18,0.4)",
+                                                padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "space-between",
+                                                boxShadow: "0 0 0 1px rgba(243,156,18,0.4), 0 0 10px rgba(243,156,18,0.2)",
+                                                animation: "fadeUp 0.35s ease"
+                                            }}>
+                                                <div style={{ position: "absolute", top: 0, left: 0, width: 3, height: "100%", background: "#F39C12" }} />
+                                                <div style={{ display: "flex", alignItems: "center", gap: 12, zIndex: 1 }}>
+                                                    <div style={{
+                                                        width: 40, height: 40, borderRadius: "50%",
+                                                        background: "rgba(243,156,18,0.15)", display: "flex", alignItems: "center", justifyContent: "center"
+                                                    }}>
+                                                        <span className="material-symbols-outlined" style={{ color: "#F39C12" }}>elevator</span>
+                                                    </div>
+                                                    <div>
+                                                        <h4 style={{ color: "#F39C12", fontWeight: 800, fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase" }}>Change Floors</h4>
+                                                        <p style={{ color: "rgba(243,156,18,0.8)", fontSize: 12 }}>
+                                                            <span style={{ color: "#fff", fontWeight: 600 }}>{prevFloor}</span>
+                                                            {" → "}
+                                                            <span style={{ color: "#fff", fontWeight: 600 }}>{currentFloor}</span>
+                                                        </p>
+                                                    </div>
                                                 </div>
-                                                <div>
-                                                    <h4 className="text-[#F39C12] font-bold text-sm tracking-wide uppercase">Change Floors</h4>
-                                                    <p className="text-[#F39C12]/80 text-xs">Go from <span className="text-white font-semibold">{prevFloor}</span> to <span class="text-white font-semibold">{currentFloor}</span></p>
-                                                </div>
+                                                <span className="material-symbols-outlined" style={{ color: "rgba(243,156,18,0.5)", transform: "rotate(-45deg)" }}>arrow_forward</span>
                                             </div>
-                                            <span className="material-symbols-outlined text-[#F39C12]/60 -rotate-45">arrow_forward</span>
-                                        </div>
-                                    )}
+                                        )}
 
-                                    <section>
-                                        <div className="flex justify-between items-baseline mb-3 px-1">
-                                            <h2 className={`text-xs font-bold uppercase tracking-widest ${isStarted ? 'text-primary' : 'text-white/60'}`}>{sectionTitle}</h2>
-                                            <span className="text-xs text-white/40 font-mono">{m.timeSlot}</span>
-                                        </div>
-                                        <div className={cardClass}>
-                                            {isStarted && <div className="absolute inset-0 opacity-20 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/30 via-transparent to-transparent"></div>}
-
-                                            <div className={`relative ${isStarted ? 'p-6 z-10' : ''}`}>
-                                                <div className="flex justify-between items-start mb-6">
-                                                    <div className="flex flex-col">
-                                                        <span className={`text-xs font-semibold mb-1 uppercase tracking-wider flex items-center gap-1.5 ${isStarted ? 'text-primary/80' : 'text-white/40'}`}>
-                                                            <span className="material-symbols-outlined text-[16px]">meeting_room</span>
-                                                            {m.room}
-                                                        </span>
-                                                        <h3 className={`font-bold text-white leading-tight ${isStarted ? 'text-2xl' : 'text-xl'}`}>{m.investor}</h3>
-                                                    </div>
-                                                    {/* Conditional Floor Badge */}
-                                                    <div className={`h-10 w-10 rounded-full flex items-center justify-center border ${isStarted ? 'bg-white/5 border-white/10' : 'bg-white/5 border-white/5 text-white/30'}`}>
-                                                        {isStarted ? <span className="text-lg font-bold text-white">{m.investor[0]}</span> : <span className="material-symbols-outlined">apartment</span>}
-                                                    </div>
-                                                </div>
-
-                                                {isStarted && <div className="h-px w-full bg-gradient-to-r from-transparent via-white/10 to-transparent my-4"></div>}
-
-                                                {isStarted ? (
-                                                    <div className="flex items-center gap-4">
-                                                        <div className="h-12 w-12 rounded-xl bg-white/5 flex items-center justify-center overflow-hidden border border-white/10">
-                                                            {repImage ? <img src={repImage} className="h-full w-full object-cover opacity-80" /> : <span className="text-2xl">💼</span>}
-                                                        </div>
-                                                        <div>
-                                                            <p className="text-[10px] text-white/40 uppercase font-bold tracking-wider mb-0.5">Rep</p>
-                                                            <p className="text-white font-medium">{m.rep}</p>
-                                                        </div>
-                                                    </div>
-                                                ) : (
-                                                    <div className="flex items-center gap-3 pt-4 border-t border-white/5">
-                                                        <div className="h-8 w-8 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-400 text-xs font-bold">
-                                                            {currentFloor.startsWith('Ground') ? 'GF' : 'FF'}
-                                                        </div>
-                                                        <div>
-                                                            <p className="text-sm text-white/80 font-medium">{currentFloor}</p>
-                                                            <p className="text-xs text-white/30">{currentFloor}</p>
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </section>
-                                </React.Fragment>
-                            );
-                        })}
+                                        <MeetingCard
+                                            meeting={m}
+                                            isStarted={isStarted}
+                                            repImage={repImage}
+                                            slotShort={slotShort}
+                                            currentFloor={currentFloor}
+                                            index={i}
+                                        />
+                                    </React.Fragment>
+                                );
+                            })}
+                        </div>
                     </main>
 
                     {/* Bottom Nav */}
-                    <nav className="flex-none bg-background-dark/90 backdrop-blur-xl border-t border-white/10 px-6 py-4 flex justify-around items-center z-50 safe-area-pb">
-                        <button className="flex flex-col items-center gap-1 text-primary">
-                            <span className="material-symbols-outlined fill-1">calendar_today</span>
-                            <span className="text-[10px] font-medium">Schedule</span>
-                        </button>
-                        <button className="flex flex-col items-center gap-1 text-white/40 hover:text-white transition-colors">
-                            <span className="material-symbols-outlined">map</span>
-                            <span className="text-[10px] font-medium">Map</span>
-                        </button>
-                        <button className="flex flex-col items-center gap-1 text-white/40 hover:text-white transition-colors">
-                            <span className="material-symbols-outlined">notifications</span>
-                            <span className="text-[10px] font-medium">Alerts</span>
-                        </button>
+                    <nav style={{
+                        position: "fixed", bottom: 16, left: "50%", transform: "translateX(-50%)",
+                        width: "90%", maxWidth: 360,
+                        background: "rgba(5,5,5,0.85)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+                        borderRadius: 16, border: "1px solid rgba(255,255,255,0.08)",
+                        padding: 6, display: "flex", zIndex: 50, boxShadow: "0 8px 32px rgba(0,0,0,0.4)"
+                    }} className="safe-area-pb">
+                        <div style={{
+                            flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                            padding: 8, borderRadius: 12, background: "rgba(255,255,255,0.05)", color: "#2ecc70"
+                        }}>
+                            <span className="material-symbols-outlined fill-1" style={{ fontSize: 20 }}>calendar_today</span>
+                            <span style={{ fontSize: 10, fontWeight: 700, marginTop: 2 }}>Schedule</span>
+                        </div>
+                        <div style={{
+                            flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                            padding: 8, borderRadius: 12, color: "rgba(255,255,255,0.35)", cursor: "pointer"
+                        }}>
+                            <span className="material-symbols-outlined" style={{ fontSize: 20 }}>map</span>
+                            <span style={{ fontSize: 10, fontWeight: 600, marginTop: 2 }}>Map</span>
+                        </div>
+                        <div style={{
+                            flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                            padding: 8, borderRadius: 12, color: "rgba(255,255,255,0.35)", cursor: "pointer"
+                        }}>
+                            <span className="material-symbols-outlined" style={{ fontSize: 20 }}>notifications</span>
+                            <span style={{ fontSize: 10, fontWeight: 600, marginTop: 2 }}>Alerts</span>
+                        </div>
                     </nav>
                 </div>
+            );
+        }
+
+        // ─── Meeting Card ──────────────────────────────────────────────────
+        function MeetingCard({ meeting, isStarted, repImage, slotShort, currentFloor, index }) {
+            const m = meeting;
+
+            if (isStarted) {
+                return (
+                    <article style={{
+                        position: "relative", borderRadius: 24, padding: 20, overflow: "hidden",
+                        background: "rgba(22,46,30,0.8)", border: "1px solid rgba(46,204,112,0.2)",
+                        animation: "fadeUp 0.35s ease", transition: "all 0.2s",
+                        boxShadow: "0 0 20px rgba(46,204,112,0.08)"
+                    }}>
+                        {/* Glow overlay */}
+                        <div style={{ position: "absolute", inset: -2, background: "linear-gradient(135deg, rgba(46,204,112,0.15), rgba(46,204,112,0.04))", borderRadius: 26, filter: "blur(4px)", pointerEvents: "none" }} />
+
+                        <div style={{ position: "relative", zIndex: 1 }}>
+                            {/* Status + Time */}
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                                <div style={{
+                                    display: "flex", alignItems: "center", gap: 6,
+                                    background: "rgba(46,204,112,0.12)", color: "#2ecc70",
+                                    border: "1px solid rgba(46,204,112,0.2)", padding: "4px 12px",
+                                    borderRadius: 999, fontSize: 10, fontWeight: 800,
+                                    letterSpacing: "0.08em", textTransform: "uppercase",
+                                    boxShadow: "0 0 12px rgba(46,204,112,0.2)", animation: "pulse-glow 3s infinite"
+                                }}>
+                                    <div className="pulse-dot-sm" />
+                                    <span>Live</span>
+                                </div>
+                                <span style={{ fontSize: 11, color: "rgba(255,255,255,0.25)", fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{slotShort}</span>
+                            </div>
+
+                            {/* Room */}
+                            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+                                <span className="material-symbols-outlined" style={{ fontSize: 14, color: "rgba(46,204,112,0.7)" }}>meeting_room</span>
+                                <span style={{ fontSize: 11, fontWeight: 700, color: "rgba(46,204,112,0.7)", textTransform: "uppercase", letterSpacing: "0.08em" }}>{m.room}</span>
+                            </div>
+
+                            {/* Investor Name */}
+                            <h3 style={{ fontSize: 22, fontWeight: 800, color: "#fff", lineHeight: 1.2, marginBottom: 14 }}>{m.investor}</h3>
+
+                            {/* Divider */}
+                            <div style={{ height: 1, background: "linear-gradient(to right, transparent, rgba(255,255,255,0.1), transparent)", margin: "0 0 14px" }} />
+
+                            {/* Rep Info */}
+                            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                                <div style={{
+                                    width: 48, height: 48, borderRadius: 14,
+                                    background: "rgba(255,255,255,0.04)", display: "flex", alignItems: "center", justifyContent: "center",
+                                    overflow: "hidden", border: "1px solid rgba(255,255,255,0.06)", flexShrink: 0
+                                }}>
+                                    {repImage
+                                        ? <img src={repImage} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt="" />
+                                        : <span style={{ fontSize: 20, fontWeight: 800, color: "rgba(255,255,255,0.5)" }}>{(m.rep || m.investor)[0]}</span>
+                                    }
+                                </div>
+                                <div>
+                                    <p style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(255,255,255,0.35)", marginBottom: 2 }}>Representative</p>
+                                    <p style={{ fontSize: 15, fontWeight: 700, color: "#fff" }}>{m.rep || "—"}</p>
+                                </div>
+                            </div>
+
+                            {/* Floor info */}
+                            <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 12, padding: "8px 12px", background: "rgba(46,204,112,0.06)", borderRadius: 12, border: "1px solid rgba(46,204,112,0.1)" }}>
+                                <span className="material-symbols-outlined" style={{ fontSize: 16, color: "rgba(46,204,112,0.6)" }}>apartment</span>
+                                <span style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.5)" }}>{currentFloor}</span>
+                            </div>
+                        </div>
+                    </article>
+                );
+            }
+
+            // Pending card
+            return (
+                <article style={{
+                    position: "relative", borderRadius: 24, padding: 20, overflow: "hidden",
+                    background: index === 0 ? "rgba(13,26,17,0.8)" : "#111",
+                    border: `1px solid ${index === 0 ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.06)"}`,
+                    animation: "fadeUp 0.35s ease", transition: "all 0.2s",
+                    opacity: index === 0 ? 1 : 0.85
+                }}>
+                    {/* Status + Time */}
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                        <div style={{
+                            display: "flex", alignItems: "center", gap: 5,
+                            background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.3)",
+                            border: "1px solid rgba(255,255,255,0.08)", padding: "3px 10px",
+                            borderRadius: 999, fontSize: 10, fontWeight: 700,
+                            letterSpacing: "0.08em", textTransform: "uppercase"
+                        }}>
+                            <span>{index === 0 ? "Up Next" : "Upcoming"}</span>
+                        </div>
+                        <span style={{ fontSize: 11, color: "rgba(255,255,255,0.25)", fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{slotShort}</span>
+                    </div>
+
+                    {/* Room */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: 14, color: "rgba(255,255,255,0.3)" }}>meeting_room</span>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: "0.08em" }}>{m.room}</span>
+                    </div>
+
+                    {/* Investor Name */}
+                    <h3 style={{ fontSize: 20, fontWeight: 800, color: "#fff", lineHeight: 1.2, marginBottom: 14, opacity: index === 0 ? 1 : 0.8 }}>{m.investor}</h3>
+
+                    {/* Footer: Rep + Floor */}
+                    <div style={{
+                        display: "flex", alignItems: "center", gap: 10, paddingTop: 14,
+                        borderTop: "1px solid rgba(255,255,255,0.05)"
+                    }}>
+                        <div style={{
+                            width: 36, height: 36, borderRadius: 10,
+                            background: "rgba(255,255,255,0.04)", display: "flex", alignItems: "center", justifyContent: "center",
+                            overflow: "hidden", border: "1px solid rgba(255,255,255,0.05)", flexShrink: 0
+                        }}>
+                            {repImage
+                                ? <img src={repImage} style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.7 }} alt="" />
+                                : <span style={{ fontSize: 14, fontWeight: 800, color: "rgba(255,255,255,0.4)" }}>{(m.rep || m.investor)[0]}</span>
+                            }
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                            <p style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(255,255,255,0.25)" }}>Rep</p>
+                            <p style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.6)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{m.rep || "—"}</p>
+                        </div>
+                        <div style={{ textAlign: "right", flexShrink: 0 }}>
+                            <p style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(255,255,255,0.25)" }}>Floor</p>
+                            <p style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.4)" }}>{currentFloor}</p>
+                        </div>
+                    </div>
+                </article>
             );
         }
 
