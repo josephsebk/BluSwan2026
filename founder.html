@@ -107,6 +107,18 @@
         const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyB5b-raK5TB8jae94FinurfCCdMVMIiJquzkTTYnejocMLPj_GpnLl4Idor8-ccQ0Wsg/exec";
         const POLL_INTERVAL = 10000;
 
+        // Normalize time slots: convert 24h format and fix wrong AM/PM
+        const normalizeTimeSlot = (ts) => {
+            if (!ts) return ts;
+            return ts.replace(/(\d{1,2}):(\d{2})\s*(AM|PM)?/g, (match, h, min) => {
+                let hour = parseInt(h, 10);
+                let ampm = (hour >= 12) ? "PM" : "AM";
+                if (hour > 12) hour -= 12;
+                if (hour === 0) hour = 12;
+                return hour + ":" + min + " " + ampm;
+            });
+        };
+
         // Fallback if script fails
         if (typeof INVESTOR_IMAGES === 'undefined') { var INVESTOR_IMAGES = {}; }
 
@@ -146,7 +158,10 @@
                     const res = await fetch(`${APPS_SCRIPT_URL}?action=getMeetings`);
                     const data = await res.json();
                     if (data.meetings) {
-                        setMeetings(data.meetings);
+                        setMeetings(data.meetings.map(m => ({
+                            ...m,
+                            timeSlot: normalizeTimeSlot(m.timeSlot || ""),
+                        })));
                         setLastSync(new Date());
                     }
                 } catch (e) { console.error("Fetch error", e); }

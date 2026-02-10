@@ -88,6 +88,18 @@
         const { useState, useEffect, useMemo, useRef } = React;
         const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyB5b-raK5TB8jae94FinurfCCdMVMIiJquzkTTYnejocMLPj_GpnLl4Idor8-ccQ0Wsg/exec";
 
+        // Normalize time slots: convert 24h format and fix wrong AM/PM
+        const normalizeTimeSlot = (ts) => {
+            if (!ts) return ts;
+            return ts.replace(/(\d{1,2}):(\d{2})\s*(AM|PM)?/g, (match, h, min) => {
+                let hour = parseInt(h, 10);
+                let ampm = (hour >= 12) ? "PM" : "AM";
+                if (hour > 12) hour -= 12;
+                if (hour === 0) hour = 12;
+                return hour + ":" + min + " " + ampm;
+            });
+        };
+
         function App() {
             const [meetings, setMeetings] = useState([]);
             const [loading, setLoading] = useState(true);
@@ -108,7 +120,12 @@
                 fetch(`${APPS_SCRIPT_URL}?action=getMeetings`)
                     .then(res => res.json())
                     .then(data => {
-                        if (data.meetings) setMeetings(data.meetings);
+                        if (data.meetings) {
+                            setMeetings(data.meetings.map(m => ({
+                                ...m,
+                                timeSlot: normalizeTimeSlot(m.timeSlot || ""),
+                            })));
+                        }
                         setLastUpdated(new Date());
                         setLoading(false);
                     })
@@ -122,15 +139,21 @@
                 return () => clearInterval(interval);
             }, []);
 
-            // 1. Get Unique Time Slots (Sorted)
+            // 1. Get Unique Time Slots (Sorted by actual time)
             const timeSlots = useMemo(() => {
+                const parseMinutes = (s) => {
+                    // Parse "10:00 AM" or "1:35 PM" to minutes from midnight
+                    const match = s.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+                    if (!match) return 0;
+                    let h = parseInt(match[1], 10);
+                    const m = parseInt(match[2], 10);
+                    const isPM = match[3].toUpperCase() === 'PM';
+                    if (isPM && h !== 12) h += 12;
+                    if (!isPM && h === 12) h = 0;
+                    return h * 60 + m;
+                };
                 const slots = new Set(meetings.map(m => m.timeSlot).filter(Boolean));
-                return Array.from(slots).sort((a, b) => {
-                    const getHour = (s) => parseInt(s.split(':')[0]);
-                    const getAmPm = (s) => s.includes('PM') ? 1 : 0;
-                    if (getAmPm(a) !== getAmPm(b)) return getAmPm(a) - getAmPm(b);
-                    return a.localeCompare(b);
-                });
+                return Array.from(slots).sort((a, b) => parseMinutes(a) - parseMinutes(b));
             }, [meetings]);
 
             // 2. Get Entities (Rows)

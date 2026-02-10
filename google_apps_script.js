@@ -102,9 +102,15 @@ function getMeetings() {
     var colTimeSlot = findCol(['time', 'slot']);
     var colFund = 3; // Force Column D for Investor Name as requested
 
-    // Force Column F (index 5) for Rep as requested by user.
-    // Dynamic header matching was unreliable (e.g. matching "Investor Rep" in Col D).
-    var colRep = 5;
+    // Find Rep column dynamically — look for "rep" header that isn't the fund/investor column
+    var colRep = -1;
+    for (var i = 0; i < headers.length; i++) {
+        if (i === colFund) continue; // Skip the investor/fund column
+        if (headers[i] === 'rep' || headers[i] === 'investor rep' || headers[i] === 'representative') {
+            colRep = i;
+            break;
+        }
+    }
 
     var colCompany = findCol(['company', 'startup']);
     var colFounder = findCol(['founder']);
@@ -136,11 +142,23 @@ function getMeetings() {
 
         if (!company && !fund) continue; // Skip empty rows
 
-        // Normalize time slot format: "2:30–3:00" → "2:30 PM – 3:00 PM"
+        // Normalize time slot format: "10:00–10:35" → "10:00 AM – 10:35 AM"
+        // Handles 24h format (13:00 → 1:00 PM) and determines AM/PM from hour value
         if (timeSlot && timeSlot.indexOf('PM') === -1 && timeSlot.indexOf('AM') === -1) {
             var parts = timeSlot.split(/[–-]/);
             if (parts.length === 2) {
-                timeSlot = parts[0].trim() + ' PM – ' + parts[1].trim() + ' PM';
+                var formatTime = function(t) {
+                    t = t.trim();
+                    var match = t.match(/^(\d{1,2}):(\d{2})$/);
+                    if (!match) return t;
+                    var h = parseInt(match[1], 10);
+                    var m = match[2];
+                    var suffix = (h >= 12) ? 'PM' : 'AM';
+                    if (h > 12) h = h - 12;
+                    if (h === 0) h = 12;
+                    return h + ':' + m + ' ' + suffix;
+                };
+                timeSlot = formatTime(parts[0]) + ' – ' + formatTime(parts[1]);
             }
         }
 

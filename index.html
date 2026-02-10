@@ -61,11 +61,20 @@
           if (data.meetings) {
             return data.meetings.map((m) => ({
               id: m.id, runner: m.runner || "",
-              // FIX: Replace "11:30 PM", "10:00 PM", "10:45 PM" with AM
-              timeSlot: (m.timeSlot || "")
-                .replace("11:30 PM", "11:30 AM")
-                .replace("10:00 PM", "10:00 AM")
-                .replace("10:45 PM", "10:45 AM"),
+              // Normalize time slots: fix any remaining 24h format or wrong AM/PM
+              timeSlot: (() => {
+                let ts = m.timeSlot || "";
+                // Convert "13:00 PM – 13:35 PM" or similar 24h+PM to proper 12h format
+                ts = ts.replace(/(\d{1,2}):(\d{2})\s*(AM|PM)?/g, (match, h, min, suffix) => {
+                  let hour = parseInt(h, 10);
+                  // Determine correct AM/PM from hour value (ignore existing suffix)
+                  let ampm = (hour >= 12) ? "PM" : "AM";
+                  if (hour > 12) hour -= 12;
+                  if (hour === 0) hour = 12;
+                  return hour + ":" + min + " " + ampm;
+                });
+                return ts;
+              })(),
               founder: m.company || m.founder || "",
               investor: m.investor || "", room: m.room || "",
               rep: m.rep || "",
@@ -169,49 +178,62 @@
       return null;
     };
 
+    // Fallback data from current Google Sheet (LPAGM_BluSwan_2026_2)
+    // This is overridden by live data when the Apps Script API is connected
     const MEETINGS_DATA = [
-      { id: 1, runner: "Sumangal", timeSlot: "2:30 PM – 3:00 PM", founder: "IDfy", investor: "Evolvence Equity Partners", room: "FF-Introspect", rep: "Anoushka", status: "pending", isPriority: false },
-      { id: 2, runner: "Sumangal", timeSlot: "2:30 PM – 3:00 PM", founder: "TestMu (formerly Lambdatest)", investor: "IFC", room: "GF-Navigate", rep: "Shalabh Tandon", status: "pending", isPriority: false },
-      { id: 3, runner: "Sumangal", timeSlot: "2:30 PM – 3:00 PM", founder: "Cashify", investor: "Neo Secondaries Fund", room: "FF-Aspire", rep: "Nitin Agarwal", status: "pending", isPriority: false },
-      { id: 4, runner: "Yash", timeSlot: "2:30 PM – 3:00 PM", founder: "Aerem", investor: "Nippon India", room: "GF-Library", rep: "Ankit Agarwal", status: "pending", isPriority: false },
-      { id: 5, runner: "Yash", timeSlot: "2:30 PM – 3:00 PM", founder: "iDO Devices", investor: "Oman Investment Authority", room: "GF-Clout", rep: "Ali Abdulhussain", status: "pending", isPriority: false },
-      { id: 6, runner: "Sumangal", timeSlot: "2:30 PM – 3:00 PM", founder: "Optimo Loans", investor: "Pavilion Capital", room: "FF-Ponder", rep: "Khor Boon How", status: "pending", isPriority: false },
-      { id: 7, runner: "Sumangal", timeSlot: "2:30 PM – 3:00 PM", founder: "Squad", investor: "Transpose Platform", room: "GF-Library", rep: "Fiyin Olayisade", status: "pending", isPriority: false },
-      { id: 8, runner: "Yash", timeSlot: "2:30 PM – 3:00 PM", founder: "Stage", investor: "Transsion", room: "FF-Library", rep: "George Li", status: "pending", isPriority: false },
-      { id: 9, runner: "Yash", timeSlot: "2:30 PM – 3:00 PM", founder: "SuperK", investor: "Unilever Ventures", room: "FF-Buzz", rep: "Pawan Chaturvedi", status: "pending", isPriority: false },
-      { id: 10, runner: "Sumangal", timeSlot: "3:00 PM – 3:30 PM", founder: "IDfy", investor: "GIC", room: "FF-Curate", rep: "Gaurav Jain", status: "pending", isPriority: false },
-      { id: 11, runner: "Sumangal", timeSlot: "3:00 PM – 3:30 PM", founder: "Spinny", investor: "Neo Secondaries Fund", room: "FF-Aspire", rep: "Nitin Agarwal", status: "pending", isPriority: false },
-      { id: 12, runner: "Yash", timeSlot: "3:00 PM – 3:30 PM", founder: "Virohan", investor: "Nippon India", room: "GF-Library", rep: "Ankit Agarwal", status: "pending", isPriority: false },
-      { id: 13, runner: "Sumangal", timeSlot: "3:00 PM – 3:30 PM", founder: "Cashify", investor: "Oman Investment Authority", room: "GF-Clout", rep: "Ali Abdulhussain", status: "pending", isPriority: false },
-      { id: 14, runner: "Sumangal", timeSlot: "3:00 PM – 3:30 PM", founder: "Squad", investor: "Pavilion Capital", room: "FF-Ponder", rep: "Khor Boon How", status: "pending", isPriority: false },
-      { id: 15, runner: "Sumangal", timeSlot: "3:00 PM – 3:30 PM", founder: "TestMu (formerly Lambdatest)", investor: "Prosperity 7", room: "GF-LAZE", rep: "Balsam Alsaif", status: "pending", isPriority: false },
-      { id: 16, runner: "Sumangal", timeSlot: "3:00 PM – 3:30 PM", founder: "Euler Motors", investor: "Transsion", room: "FF-Library", rep: "George Li", status: "pending", isPriority: false },
-      { id: 17, runner: "Yash", timeSlot: "3:00 PM – 3:30 PM", founder: "iDO Devices", investor: "UTEC", room: "FF-Balance", rep: "Kiran", status: "pending", isPriority: false },
-      { id: 18, runner: "Sumangal", timeSlot: "3:30 PM – 4:00 PM", founder: "Cashify", investor: "Evolvence Equity Partners", room: "FF-Introspect", rep: "Anoushka", status: "pending", isPriority: false },
-      { id: 19, runner: "Yash", timeSlot: "3:30 PM – 4:00 PM", founder: "smallcase", investor: "GIC", room: "FF-Curate", rep: "Gaurav Jain", status: "pending", isPriority: false },
-      { id: 20, runner: "Sumangal", timeSlot: "3:30 PM – 4:00 PM", founder: "IDfy", investor: "Mirabilis Investment Trust", room: "FF-Balance", rep: "Boris DSouza", status: "pending", isPriority: false },
-      { id: 21, runner: "Yash", timeSlot: "3:30 PM – 4:00 PM", founder: "iDO Devices", investor: "Neo Secondaries Fund", room: "FF-Aspire", rep: "Nitin Agarwal", status: "pending", isPriority: false },
-      { id: 22, runner: "Sumangal", timeSlot: "3:30 PM – 4:00 PM", founder: "Optimo Loans", investor: "Nippon India", room: "GF-Library", rep: "Ankit Agarwal", status: "pending", isPriority: false },
-      { id: 23, runner: "Sumangal", timeSlot: "3:30 PM – 4:00 PM", founder: "Euler Motors", investor: "Oman Investment Authority", room: "GF-Clout", rep: "Ali Abdulhussain", status: "pending", isPriority: false },
-      { id: 24, runner: "Sumangal", timeSlot: "3:30 PM – 4:00 PM", founder: "TestMu (formerly Lambdatest)", investor: "Pavilion Capital", room: "FF-Ponder", rep: "Khor Boon How", status: "pending", isPriority: false },
-      { id: 25, runner: "Yash", timeSlot: "3:30 PM – 4:00 PM", founder: "Optimized Electrotech", investor: "Prosperity 7", room: "GF-LAZE", rep: "Balsam Alsaif", status: "pending", isPriority: false },
-      { id: 26, runner: "Sumangal", timeSlot: "3:30 PM – 4:00 PM", founder: "Spinny", investor: "Transsion", room: "FF-Library", rep: "George Li", status: "pending", isPriority: false },
-      { id: 27, runner: "Yash", timeSlot: "4:00 PM – 4:30 PM", founder: "Optimized Electrotech", investor: "GIC", room: "FF-Curate", rep: "Gaurav Jain", status: "pending", isPriority: false },
-      { id: 28, runner: "Yash", timeSlot: "4:00 PM – 4:30 PM", founder: "iDO Devices", investor: "IFC", room: "GF-Navigate", rep: "Shalabh Tandon", status: "pending", isPriority: false },
-      { id: 29, runner: "Sumangal", timeSlot: "4:00 PM – 4:30 PM", founder: "Cashify", investor: "Mirabilis Investment Trust", room: "FF-Balance", rep: "Boris DSouza", status: "pending", isPriority: false },
-      { id: 30, runner: "Yash", timeSlot: "4:00 PM – 4:30 PM", founder: "smallcase", investor: "Neo Secondaries Fund", room: "FF-Aspire", rep: "Nitin Agarwal", status: "pending", isPriority: false },
-      { id: 31, runner: "Yash", timeSlot: "4:00 PM – 4:30 PM", founder: "Stage", investor: "Nippon India", room: "GF-Library", rep: "Ankit Agarwal", status: "pending", isPriority: false },
-      { id: 32, runner: "Sumangal", timeSlot: "4:00 PM – 4:30 PM", founder: "IDfy", investor: "Oman Investment Authority", room: "GF-Clout", rep: "Ali Abdulhussain", status: "pending", isPriority: false },
-      { id: 33, runner: "Yash", timeSlot: "4:00 PM – 4:30 PM", founder: "Aerem", investor: "Pavilion Capital", room: "FF-Ponder", rep: "Khor Boon How", status: "pending", isPriority: false },
-      { id: 34, runner: "Sumangal", timeSlot: "4:30 PM – 5:00 PM", founder: "Optimo Loans", investor: "Neo Secondaries Fund", room: "FF-Aspire", rep: "Nitin Agarwal", status: "pending", isPriority: false },
-      { id: 35, runner: "Yash", timeSlot: "4:30 PM – 5:00 PM", founder: "smallcase", investor: "Oman Investment Authority", room: "GF-Clout", rep: "Ali Abdulhussain", status: "pending", isPriority: false },
-      { id: 36, runner: "Yash", timeSlot: "4:30 PM – 5:00 PM", founder: "Optimized Electrotech", investor: "Pavilion Capital", room: "FF-Ponder", rep: "Khor Boon How", status: "pending", isPriority: false },
-      { id: 37, runner: "Yash", timeSlot: "4:30 PM – 5:00 PM", founder: "iDO Devices", investor: "Transsion", room: "FF-Library", rep: "George Li", status: "pending", isPriority: false },
+      { id: 1, runner: "Charu", timeSlot: "10:00 AM – 10:35 AM", founder: "Futwork", investor: "Prosus", room: "", rep: "", status: "pending", isPriority: false },
+      { id: 2, runner: "Chaitanya", timeSlot: "10:00 AM – 10:35 AM", founder: "Handpickd", investor: "Creaegis", room: "", rep: "", status: "pending", isPriority: false },
+      { id: 3, runner: "Charu", timeSlot: "10:00 AM – 10:35 AM", founder: "IDO Devices", investor: "ICICI Venture", room: "", rep: "", status: "pending", isPriority: false },
+      { id: 4, runner: "Apurva", timeSlot: "10:00 AM – 10:35 AM", founder: "Lucira", investor: "B Capital", room: "", rep: "", status: "pending", isPriority: false },
+      { id: 5, runner: "Sreenidhi", timeSlot: "10:00 AM – 10:35 AM", founder: "Procol", investor: "360 One", room: "", rep: "", status: "pending", isPriority: false },
+      { id: 6, runner: "Akshat", timeSlot: "10:45 AM – 11:20 AM", founder: "FOXO", investor: "Sorin Investments", room: "", rep: "", status: "pending", isPriority: false },
+      { id: 7, runner: "Charu", timeSlot: "10:45 AM – 11:20 AM", founder: "Futwork", investor: "Creaegis", room: "", rep: "", status: "pending", isPriority: false },
+      { id: 8, runner: "Charu", timeSlot: "10:45 AM – 11:20 AM", founder: "IDO Devices", investor: "SMBC Asia Rising Fund", room: "", rep: "", status: "pending", isPriority: false },
+      { id: 9, runner: "Apurva", timeSlot: "10:45 AM – 11:20 AM", founder: "Lucira", investor: "Sorin Investments", room: "", rep: "", status: "pending", isPriority: false },
+      { id: 10, runner: "", timeSlot: "", founder: "Clientell", investor: "360 One", room: "", rep: "", status: "pending", isPriority: false },
+      { id: 11, runner: "Sreenidhi", timeSlot: "10:45 AM – 11:20 AM", founder: "Procol", investor: "Dharana Capital", room: "", rep: "", status: "pending", isPriority: false },
+      { id: 12, runner: "", timeSlot: "10:45 AM – 11:20 AM", founder: "Futwork", investor: "ICICI Ventures", room: "", rep: "", status: "pending", isPriority: false },
+      { id: 13, runner: "Akshat", timeSlot: "11:30 AM – 12:05 PM", founder: "FOXO", investor: "Prosus", room: "", rep: "", status: "pending", isPriority: false },
+      { id: 14, runner: "Chaitanya", timeSlot: "11:30 AM – 12:05 PM", founder: "Handpickd", investor: "Aavishkaar Capital", room: "", rep: "", status: "pending", isPriority: false },
+      { id: 15, runner: "Charu", timeSlot: "11:30 AM – 12:05 PM", founder: "IDO Devices", investor: "360 One", room: "", rep: "", status: "pending", isPriority: false },
+      { id: 16, runner: "Akshat", timeSlot: "11:30 AM – 12:05 PM", founder: "Pico Xpress", investor: "Dharana Capital", room: "", rep: "", status: "pending", isPriority: false },
+      { id: 17, runner: "Sreenidhi", timeSlot: "11:30 AM – 12:05 PM", founder: "Procol", investor: "Creaegis", room: "", rep: "", status: "pending", isPriority: false },
+      { id: 18, runner: "Akshat", timeSlot: "11:30 AM – 12:05 PM", founder: "Wiffy", investor: "SMBC Asia Rising Fund", room: "", rep: "", status: "pending", isPriority: false },
+      { id: 19, runner: "Chaitanya", timeSlot: "12:15 PM – 12:50 PM", founder: "GoSTOPS", investor: "Creaegis", room: "", rep: "", status: "pending", isPriority: false },
+      { id: 20, runner: "Charu", timeSlot: "12:15 PM – 12:50 PM", founder: "IDO Devices", investor: "Dharana Capital", room: "", rep: "", status: "pending", isPriority: false },
+      { id: 21, runner: "Apurva", timeSlot: "12:15 PM – 12:50 PM", founder: "Lucira", investor: "Chiratae Ventures", room: "", rep: "", status: "pending", isPriority: false },
+      { id: 22, runner: "Sreenidhi", timeSlot: "12:15 PM – 12:50 PM", founder: "Procol", investor: "Sorin Investments", room: "", rep: "", status: "pending", isPriority: false },
+      { id: 23, runner: "Sreenidhi", timeSlot: "12:15 PM – 12:50 PM", founder: "Squadstack.ai", investor: "GMO Venture Partners", room: "", rep: "", status: "pending", isPriority: false },
+      { id: 24, runner: "Akshat", timeSlot: "12:15 PM – 12:50 PM", founder: "Wiffy", investor: "360 One", room: "", rep: "", status: "pending", isPriority: false },
+      { id: 25, runner: "Sreenidhi", timeSlot: "12:15 PM – 12:50 PM", founder: "Namma Yatri", investor: "Aavishkaar Capital", room: "", rep: "", status: "pending", isPriority: false },
+      { id: 26, runner: "Apurva", timeSlot: "1:00 PM – 1:35 PM", founder: "Clientell", investor: "360 One", room: "", rep: "", status: "pending", isPriority: false },
+      { id: 27, runner: "Akshat", timeSlot: "1:00 PM – 1:35 PM", founder: "FOXO", investor: "Creaegis", room: "", rep: "", status: "pending", isPriority: false },
+      { id: 28, runner: "Charu", timeSlot: "1:00 PM – 1:35 PM", founder: "IDO Devices", investor: "BeeNext", room: "", rep: "", status: "pending", isPriority: false },
+      { id: 29, runner: "Charu", timeSlot: "1:00 PM – 1:35 PM", founder: "Nivasa", investor: "Quona", room: "", rep: "", status: "pending", isPriority: false },
+      { id: 30, runner: "Akshat", timeSlot: "1:00 PM – 1:35 PM", founder: "Pico Xpress", investor: "Chiratae Ventures", room: "", rep: "", status: "pending", isPriority: false },
+      { id: 31, runner: "Sreenidhi", timeSlot: "1:00 PM – 1:35 PM", founder: "Procol", investor: "Aavishkaar Capital", room: "", rep: "", status: "pending", isPriority: false },
+      { id: 32, runner: "Sreenidhi", timeSlot: "1:00 PM – 1:35 PM", founder: "Squadstack.ai", investor: "Dharana Capital", room: "", rep: "", status: "pending", isPriority: false },
+      { id: 33, runner: "Chaitanya", timeSlot: "1:00 PM – 1:35 PM", founder: "STAGE", investor: "B Capital", room: "", rep: "", status: "pending", isPriority: false },
+      { id: 34, runner: "Sreenidhi", timeSlot: "1:00 PM – 1:35 PM", founder: "Namma Yatri", investor: "Pratithi Growth", room: "", rep: "", status: "pending", isPriority: false },
+      { id: 35, runner: "Sreenidhi", timeSlot: "1:40 PM – 2:20 PM", founder: "Procol", investor: "Quona", room: "", rep: "", status: "pending", isPriority: false },
+      { id: 36, runner: "Apurva", timeSlot: "1:45 PM – 2:20 PM", founder: "Clientell", investor: "HealthKois", room: "", rep: "", status: "pending", isPriority: false },
+      { id: 37, runner: "Chaitanya", timeSlot: "1:45 PM – 2:20 PM", founder: "GoSTOPS", investor: "Chiratae Ventures", room: "", rep: "", status: "pending", isPriority: false },
+      { id: 38, runner: "Charu", timeSlot: "1:45 PM – 2:20 PM", founder: "IDO Devices", investor: "Creaegis", room: "", rep: "", status: "pending", isPriority: false },
+      { id: 39, runner: "Apurva", timeSlot: "1:45 PM – 2:20 PM", founder: "LightFury", investor: "B Capital", room: "", rep: "", status: "pending", isPriority: false },
+      { id: 40, runner: "Charu", timeSlot: "1:45 PM – 2:20 PM", founder: "Nivasa", investor: "Steadview", room: "", rep: "", status: "pending", isPriority: false },
+      { id: 41, runner: "Akshat", timeSlot: "1:45 PM – 2:20 PM", founder: "Wiffy", investor: "BeeNext", room: "", rep: "", status: "pending", isPriority: false },
+      { id: 42, runner: "Sreenidhi", timeSlot: "2:20 PM – 2:50 PM", founder: "Squadstack.ai", investor: "Quona", room: "", rep: "", status: "pending", isPriority: false },
+      { id: 43, runner: "Apurva", timeSlot: "10:45 AM – 11:20 AM", founder: "Clientell", investor: "B Capital", room: "", rep: "", status: "pending", isPriority: false },
+      { id: 44, runner: "Akshat", timeSlot: "2:30 PM – 2:50 PM", founder: "FOXO", investor: "HealthKois", room: "", rep: "", status: "pending", isPriority: false },
+      { id: 45, runner: "Charu", timeSlot: "2:30 PM – 2:50 PM", founder: "IDO Devices", investor: "Steadview", room: "", rep: "", status: "pending", isPriority: false },
+      { id: 46, runner: "Apurva", timeSlot: "2:30 PM – 2:50 PM", founder: "Lucira", investor: "BeeNext", room: "", rep: "", status: "pending", isPriority: false },
+      { id: 47, runner: "Chaitanya", timeSlot: "2:30 PM – 2:50 PM", founder: "STAGE", investor: "360 One", room: "", rep: "", status: "pending", isPriority: false },
+      { id: 48, runner: "Akshat", timeSlot: "2:30 PM – 2:50 PM", founder: "Wiffy", investor: "Creaegis", room: "", rep: "", status: "pending", isPriority: false },
     ];
 
-    // Staff from the "Work" sheet - UPDATED for New Data
+    // Staff from the "Work" sheet - UPDATED for current event data
     const STAFF = {
-      founderRunners: ["Akshat", "Chaitanya", "Charu", "Apurva", "Sreenidhi"],
+      founderRunners: ["Akshat", "Apurva", "Chaitanya", "Charu", "Sreenidhi"],
       founderRunnerBackup: "Joseph",
       investorRunners: [], // Data missing in new sheet
       investorRunnerBackup: "Ankush",
@@ -238,10 +260,11 @@
       "10:45 AM – 11:20 AM",
       "11:30 AM – 12:05 PM",
       "12:15 PM – 12:50 PM",
-      "13:00 PM – 13:35 PM",
-      "13:45 PM – 14:20 PM",
-      "14:20 PM – 14:50 PM",
-      "14:30 PM – 14:50 PM",
+      "1:00 PM – 1:35 PM",
+      "1:40 PM – 2:20 PM",
+      "1:45 PM – 2:20 PM",
+      "2:20 PM – 2:50 PM",
+      "2:30 PM – 2:50 PM",
     ];
 
     // Investor Runner assignments — parsed from "Investor View" sheet
