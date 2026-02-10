@@ -89,11 +89,17 @@
       updateStatus: async (meetingId, action, startedBy) => {
         if (!SheetsAPI.isConfigured()) return false;
         try {
-          await fetch(APPS_SCRIPT_URL, {
+          const res = await fetch(APPS_SCRIPT_URL, {
             method: "POST",
             headers: { "Content-Type": "text/plain" },
             body: JSON.stringify({ action, meetingId, startedBy }),
           });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const text = await res.text();
+          try {
+            const data = JSON.parse(text);
+            if (data.error) throw new Error(data.error);
+          } catch (e) { /* ignore non-JSON response if successful */ }
           return true;
         } catch (e) { console.error("Sheet update error:", e); return false; }
       },
