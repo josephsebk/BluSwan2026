@@ -865,11 +865,22 @@
         return () => { if (pollRef.current) clearInterval(pollRef.current); };
       }, [refreshFromSheet]);
 
+      const [updatingIds, setUpdatingIds] = useState(new Set());
+
       const startMeeting = useCallback(async (id) => {
         // Optimistic update
         setMeetings((prev) => prev.map((m) => (m.id === id ? { ...m, status: "started" } : m)));
+        setUpdatingIds((prev) => new Set(prev).add(id));
+
         // Write to Google Sheet
-        await SheetsAPI.updateStatus(id, "startMeeting", selectedRunner || "");
+        const success = await SheetsAPI.updateStatus(id, "startMeeting", selectedRunner || "");
+
+        if (!success) {
+          // Revert if failed
+          alert("Failed to update status. Please try again.");
+          setMeetings((prev) => prev.map((m) => (m.id === id ? { ...m, status: "pending" } : m)));
+        }
+        setUpdatingIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
       }, [selectedRunner]);
 
       const resetMeeting = useCallback(async (id) => {
@@ -923,7 +934,7 @@
       }, [meetings]);
 
       return (
-        <AppContext.Provider value={{ meetings, investorAssignments, startMeeting, resetMeeting, startInvestorMeeting, resetInvestorMeeting, view, setView, selectedRunner, setSelectedRunner, runnerRole, setRunnerRole, stats, ROOMS, openSearch, closeSearch, isLive, lastSync, syncing, refreshFromSheet }}>
+        <AppContext.Provider value={{ meetings, investorAssignments, startMeeting, resetMeeting, startInvestorMeeting, resetInvestorMeeting, view, setView, selectedRunner, setSelectedRunner, runnerRole, setRunnerRole, stats, ROOMS, openSearch, closeSearch, isLive, lastSync, syncing, refreshFromSheet, updatingIds }}>
           {children}
         </AppContext.Provider>
       );
@@ -1209,21 +1220,23 @@
     }
 
     function RunnerMeetingCard({ meeting, confirmId, onStart, onCancel, onReset }) {
+      const { updatingIds } = useApp();
       const isStarted = meeting.status === "started";
       const isConfirming = confirmId === meeting.id;
+      const isUpdating = updatingIds && updatingIds.has(meeting.id);
       const companyName = meeting.founder;
       const repName = meeting.rep || "";
       const roomInfo = ROOMS.find((r) => r.name === meeting.room);
 
       return (
-        <article className={isStarted ? "meeting-card-live" : "meeting-card-pending"}>
+        <article className={isStarted ? "meeting-card-live" : "meeting-card-pending"} style={isUpdating ? { opacity: 0.7, pointerEvents: "none" } : {}}>
           {isStarted && <div className="card-glow" />}
           <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", gap: 12 }}>
             {/* Top row */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div className={isStarted ? "status-badge-live" : "status-badge-pending"}>
-                {isStarted && <div className="pulse-dot-sm" />}
-                <span>{isStarted ? "LIVE" : "PENDING"}</span>
+                {isUpdating ? <div className="pulse-dot-sm" /> : isStarted && <div className="pulse-dot-sm" />}
+                <span>{isUpdating ? "UPDATING..." : isStarted ? "LIVE" : "PENDING"}</span>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 {meeting.isPriority && <span style={{ fontSize: 14 }} title="Top 3 Request">⭐</span>}
@@ -1264,7 +1277,11 @@
 
             {/* Actions */}
             {!isStarted && (
-              isConfirming ? (
+              isUpdating ? (
+                <button disabled className="btn-runner-primary" style={{ opacity: 0.7, cursor: "wait" }}>
+                  Updating...
+                </button>
+              ) : isConfirming ? (
                 <div style={{ display: "flex", gap: 8 }}>
                   <button onClick={() => onStart(meeting.id)} className="btn-confirm-yes">✓ Confirm Start</button>
                   <button onClick={onCancel} className="btn-confirm-no">Cancel</button>
