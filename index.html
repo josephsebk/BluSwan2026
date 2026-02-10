@@ -63,9 +63,18 @@
               id: m.id, runner: m.runner || "",
               // FIX: Replace "11:30 PM", "10:00 PM", "10:45 PM" with AM
               timeSlot: (m.timeSlot || "")
-                .replace("11:30 PM", "11:30 AM")
                 .replace("10:00 PM", "10:00 AM")
-                .replace("10:45 PM", "10:45 AM"),
+                .replace("10:35 PM", "10:35 AM")
+                .replace("10:45 PM", "10:45 AM")
+                .replace("11:20 PM", "11:20 AM")
+                .replace("11:30 PM", "11:30 AM")
+                .replace("13:00 PM", "1:00 PM")
+                .replace("13:35 PM", "1:35 PM")
+                .replace("13:40 PM", "1:40 PM")
+                .replace("13:45 PM", "1:45 PM")
+                .replace("14:20 PM", "2:20 PM")
+                .replace("14:30 PM", "2:30 PM")
+                .replace("14:50 PM", "2:50 PM"),
               founder: m.company || m.founder || "",
               investor: m.investor || "", room: m.room || "",
               rep: m.rep || "",
@@ -238,10 +247,9 @@
       "10:45 AM – 11:20 AM",
       "11:30 AM – 12:05 PM",
       "12:15 PM – 12:50 PM",
-      "13:00 PM – 13:35 PM",
-      "13:45 PM – 14:20 PM",
-      "14:20 PM – 14:50 PM",
-      "14:30 PM – 14:50 PM",
+      "1:00 PM – 1:35 PM",
+      "1:45 PM – 2:20 PM",
+      "2:20 PM – 2:50 PM",
     ];
 
     // Investor Runner assignments — parsed from "Investor View" sheet
@@ -1048,11 +1056,13 @@
     function RunnerView() {
       const { meetings, startMeeting, resetMeeting, selectedRunner, setView, openSearch } = useApp();
       const clock = useClock();
-      const [selectedSlot, setSelectedSlot] = useState(TIME_SLOTS[0]);
+      const [selectedSlot, setSelectedSlot] = useState("All");
       const [confirmId, setConfirmId] = useState(null);
 
-      const myMeetings = meetings.filter((m) => m.runner === selectedRunner && m.timeSlot === selectedSlot);
       const allMyMeetings = meetings.filter((m) => m.runner === selectedRunner);
+      const myMeetings = selectedSlot === "All"
+        ? [...allMyMeetings].sort((a, b) => TIME_SLOTS.indexOf(a.timeSlot) - TIME_SLOTS.indexOf(b.timeSlot))
+        : allMyMeetings.filter((m) => m.timeSlot === selectedSlot);
       const liveCount = allMyMeetings.filter((m) => m.status === "started").length;
       const totalCount = allMyMeetings.length;
 
@@ -1091,8 +1101,14 @@
             </div>
           </header>
 
-          {/* Time Slot Tabs */}
           <div className="slot-tabs">
+            <button onClick={() => { setSelectedSlot("All"); setConfirmId(null); }}
+              className={selectedSlot === "All" ? "slot-tab-active" : "slot-tab"}>
+              All
+              <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 800, opacity: 0.7, background: selectedSlot === "All" ? "rgba(0,0,0,0.2)" : "rgba(255,255,255,0.1)", padding: "1px 6px", borderRadius: 99 }}>
+                {liveCount > 0 ? `${liveCount}/${totalCount}` : totalCount}
+              </span>
+            </button>
             {TIME_SLOTS.map((slot) => {
               const sc = slotCounts[slot] || { total: 0, live: 0 };
               const shortLabel = slot.split(" – ")[0];
@@ -1117,15 +1133,59 @@
               <span style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", fontWeight: 500 }}>{clock}</span>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              {myMeetings.length === 0 && (
-                <div style={{ textAlign: "center", padding: "48px 0", color: "rgba(255,255,255,0.3)" }}>
-                  <p style={{ fontSize: 40, marginBottom: 12 }}>☕</p>
-                  <p style={{ fontSize: 14 }}>No meetings this slot — you're free!</p>
-                </div>
-              )}
-              {myMeetings.map((m) => (
-                <RunnerMeetingCard key={m.id} meeting={m} confirmId={confirmId} onStart={handleStart} onCancel={() => setConfirmId(null)} onReset={resetMeeting} />
-              ))}
+              {/* Grouped View for "All" */
+                selectedSlot === "All" && myMeetings.length > 0 && (
+                  (() => {
+                    // Group by unique time slot string
+                    const grouped = {};
+                    TIME_SLOTS.forEach(slot => grouped[slot] = []);
+                    myMeetings.forEach(m => {
+                      if (grouped[m.timeSlot]) grouped[m.timeSlot].push(m);
+                      else {
+                        // Fallback for unexpected slot strings
+                        if (!grouped["Other"]) grouped["Other"] = [];
+                        grouped["Other"].push(m);
+                      }
+                    });
+
+                    return Object.entries(grouped).map(([slot, items]) => {
+                      if (items.length === 0) return null;
+                      const shortSlot = slot.split(/[–-]/)[0];
+                      return (
+                        <div key={slot} style={{ marginBottom: 20 }}>
+                          <div style={{
+                            fontSize: 13, fontWeight: 800, color: "#818cf8",
+                            background: "rgba(129,140,248,0.08)", padding: "6px 12px",
+                            borderRadius: 8, display: "inline-block", marginBottom: 12,
+                            letterSpacing: "0.05em"
+                          }}>
+                            {shortSlot}
+                          </div>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                            {items.map(m => (
+                              <RunnerMeetingCard key={m.id} meeting={m} confirmId={confirmId} onStart={handleStart} onCancel={() => setConfirmId(null)} onReset={resetMeeting} />
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()
+                )}
+
+              {/* Specific Slot View or Empty State */
+                selectedSlot !== "All" && (
+                  <>
+                    {myMeetings.length === 0 && (
+                      <div style={{ textAlign: "center", padding: "48px 0", color: "rgba(255,255,255,0.3)" }}>
+                        <p style={{ fontSize: 40, marginBottom: 12 }}>☕</p>
+                        <p style={{ fontSize: 14 }}>No meetings this slot — you're free!</p>
+                      </div>
+                    )}
+                    {myMeetings.map((m) => (
+                      <RunnerMeetingCard key={m.id} meeting={m} confirmId={confirmId} onStart={handleStart} onCancel={() => setConfirmId(null)} onReset={resetMeeting} />
+                    ))}
+                  </>
+                )}
             </div>
           </main>
 
